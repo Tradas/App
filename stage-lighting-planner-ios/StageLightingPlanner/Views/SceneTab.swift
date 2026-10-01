@@ -56,6 +56,13 @@ struct SceneTab: View {
                 }
             }
             .navigationTitle("Scéna")
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Hotovo") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+                }
+            }
         }
         .fileExporter(isPresented: $exporting, document: PlanDocument(plan: store.plan), contentType: .json, defaultFilename: "plan-osvetleni") { _ in }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in

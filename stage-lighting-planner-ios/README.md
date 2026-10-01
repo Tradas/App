@@ -19,6 +19,14 @@ smažte vygenerovaný `ContentView.swift` a `…App.swift`, přetáhněte do pro
 - **Analýza:** skóre hloubky, kontrastu a bezpečnosti; varování před oslněním publika, nízkým úhlem, přepalem front zóny a paprsky mimo pódium; režimy trojbodové, backlight, side, kontra, pozadí, haze a ⭐ doporučené rozmístění.
 - Plán se ukládá automaticky; export/import JSON v záložce Scéna.
 
+## iPhone
+
+Aplikace je navržená primárně pro iPhone (na výšku i na šířku; iPad funguje také):
+- spodní `TabView` s 5 záložkami, inspektor světla jako spodní panel (40 % výšky / celá obrazovka), plátno zůstává ovladatelné i při otevřeném panelu,
+- 2D plán: **pinch = zoom, tažení prázdné plochy = posun**, tlačítko pro návrat pohledu, velké dotykové plochy světel a haptická odezva při výběru,
+- 3D: kamera s horizontálním FOV, aby se na výšku vešla celá šířka místnosti,
+- číselná pole mají nad klávesnicí tlačítko „Hotovo“ a formuláře se posunem zavírají klávesnici.
+
 ## Struktura
 
 | Složka | Obsah |

@@ -9,21 +9,27 @@ struct Projector {
     let ox: CGFloat
     let oy: CGFloat   // top: y pro y=0; elevace: y pro z=0
 
-    init(mode: PlanMode, room: Room, size: CGSize) {
+    init(mode: PlanMode, room: Room, size: CGSize, zoom: CGFloat = 1, pan: CGSize = .zero) {
         self.mode = mode
         let w = CGFloat(room.w), d = CGFloat(room.d), h = CGFloat(room.h)
+        let base: CGFloat, bx: CGFloat, by: CGFloat
         if mode == .top {
             let m: CGFloat = 1.3
-            scale = min((size.width - 24) / (w + 2 * m), (size.height - 30) / (d + 2 * m))
-            ox = (size.width - w * scale) / 2
-            oy = (size.height - d * scale) / 2
+            base = min((size.width - 24) / (w + 2 * m), (size.height - 30) / (d + 2 * m))
+            bx = (size.width - w * base) / 2
+            by = (size.height - d * base) / 2
         } else {
             let ext = mode == .front ? w : d
             let l: CGFloat = 36, r: CGFloat = 14, t: CGFloat = 14, b: CGFloat = 30
-            scale = min((size.width - l - r) / ext, (size.height - t - b) / h)
-            ox = l + ((size.width - l - r) - ext * scale) / 2
-            oy = t + ((size.height - t - b) - h * scale) / 2 + h * scale
+            base = min((size.width - l - r) / ext, (size.height - t - b) / h)
+            bx = l + ((size.width - l - r) - ext * base) / 2
+            by = t + ((size.height - t - b) - h * base) / 2 + h * base
         }
+        // přiblížení kolem středu plátna + posun (pinch / tažení prázdné plochy)
+        let cx = size.width / 2, cy = size.height / 2
+        scale = base * zoom
+        ox = cx + (bx - cx) * zoom + pan.width
+        oy = cy + (by - cy) * zoom + pan.height
     }
 
     func point(_ p: V3) -> CGPoint {
@@ -390,10 +396,17 @@ struct PlanCanvasView: View {
     }
     @State private var target: Target?
     @State private var picked = false
+    @State private var zoom: CGFloat = 1
+    @State private var baseZoom: CGFloat = 1
+    @State private var pan: CGSize = .zero
+    @State private var basePan: CGSize = .zero
+
+    /// Dotyková plocha pro výběr světla (iPhone: prst je větší než kurzor).
+    private let hitRadius: CGFloat = 24
 
     var body: some View {
         GeometryReader { geo in
-            let pr = Projector(mode: mode, room: store.plan.room, size: geo.size)
+            let pr = Projector(mode: mode, room: store.plan.room, size: geo.size, zoom: zoom, pan: pan)
             Canvas { ctx, _ in
                 PlanRenderer(plan: store.plan, geo: store.geometry, analysis: store.analysis, selection: store.selection,
                              showCones: store.showCones, showHeat: store.showHeat, pr: pr).draw(&ctx)
@@ -401,11 +414,36 @@ struct PlanCanvasView: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { v in
-                        if !picked { picked = true; target = pick(v.startLocation, pr) }
-                        move(v.location, pr)
+                        if !picked {
+                            picked = true
+                            target = pick(v.startLocation, pr)
+                            if target != nil { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+                        }
+                        if target != nil { move(v.location, pr) }
+                        else { pan = CGSize(width: basePan.width + v.translation.width, height: basePan.height + v.translation.height) }
                     }
-                    .onEnded { _ in picked = false; target = nil }
+                    .onEnded { v in
+                        if target == nil {
+                            basePan = pan
+                            if hypot(v.translation.width, v.translation.height) < 6 { store.selection = nil }   // klepnutí do prázdna
+                        }
+                        picked = false; target = nil
+                    }
             )
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { zoom = min(6, max(1, baseZoom * $0.magnification)) }
+                    .onEnded { _ in baseZoom = zoom }
+            )
+            .overlay(alignment: .bottomTrailing) {
+                if zoom != 1 || pan != .zero {
+                    Button { zoom = 1; baseZoom = 1; pan = .zero; basePan = .zero } label: {
+                        Image(systemName: "arrow.up.left.and.down.right.magnifyingglass")
+                            .padding(10).background(.ultraThinMaterial, in: Circle())
+                    }
+                    .padding(10)
+                }
+            }
         }
     }
 
@@ -418,12 +456,12 @@ struct PlanCanvasView: View {
         // zaměřovač vybraného světla (jen shora)
         if mode == .top, case .light(let id)? = store.selection, let g = store.geometry.first(where: { $0.light.id == id }) {
             let a = pr.point(g.axis.p)
-            if hypot(a.x - p.x, a.y - p.y) < 14 { return .aim(id, g.axis.p.z) }
+            if hypot(a.x - p.x, a.y - p.y) < hitRadius { return .aim(id, g.axis.p.z) }
         }
         var best: (UUID, CGFloat)?
         for g in store.geometry {
             let q = pr.point(g.origin), d = hypot(q.x - p.x, q.y - p.y)
-            if d < 16, d < (best?.1 ?? .infinity) { best = (g.light.id, d) }
+            if d < hitRadius, d < (best?.1 ?? .infinity) { best = (g.light.id, d) }
         }
         if let b = best { store.selection = .light(b.0); return .light(b.0) }
         let (u, v) = pr.unproject(p)
@@ -442,7 +480,6 @@ struct PlanCanvasView: View {
                 return .object(o.id, mode == .top ? o.x - u : (mode == .front ? o.x : o.y) - u, o.y - v)
             }
         }
-        store.selection = nil
         return nil
     }
 

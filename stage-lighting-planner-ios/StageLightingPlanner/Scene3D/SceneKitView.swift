@@ -48,7 +48,8 @@ struct SceneKitView: UIViewRepresentable {
             let cam = SCNCamera()
             cam.zNear = 0.1
             cam.zFar = 300
-            cam.fieldOfView = 50
+            cam.projectionDirection = .horizontal   // na výšku (iPhone) se vždy vejde celá šířka místnosti
+            cam.fieldOfView = 60
             camera.camera = cam
             scene.rootNode.addChildNode(camera)
             let amb = SCNNode()
@@ -61,7 +62,7 @@ struct SceneKitView: UIViewRepresentable {
 
         func applyCamera(_ p: CameraPreset, plan: Plan) {
             let t = V3(plan.stage.x, plan.stage.y + plan.stage.d / 2, 1.5)
-            let dist = max(plan.room.w, plan.room.d) * 1.2
+            let dist = max(plan.room.w, plan.room.d) * 1.1
             var pos = t
             var up = SCNVector3(0, 1, 0)
             switch p {

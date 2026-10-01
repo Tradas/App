@@ -35,7 +35,7 @@ struct PlanTab: View {
                 }
                 .background(Color(white: 0.04))
 
-                Text(hint).font(.caption2).foregroundStyle(.secondary).padding(6)
+                Text(hint).font(.caption2).foregroundStyle(.secondary).lineLimit(2).padding(.horizontal, 8).padding(.vertical, 4)
             }
             .navigationTitle("Plánovač osvětlení")
             .navigationBarTitleDisplayMode(.inline)
@@ -51,8 +51,9 @@ struct PlanTab: View {
             }
             .sheet(isPresented: inspectorShown) {
                 InspectorView()
-                    .presentationDetents([.fraction(0.3), .large])
-                    .presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.3)))
+                    .presentationDetents([.fraction(0.4), .large])
+                    .presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.4)))
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -66,10 +67,10 @@ struct PlanTab: View {
 
     private var hint: String {
         switch store.viewMode {
-        case .top: return "Přetáhněte světlo (i mimo pódium). Kosočtverec = zaměřovač (kam svítí). Klepnutím vyberete světlo nebo objekt."
+        case .top: return "Táhněte světlo (i mimo pódium), kosočtverec = zaměřovač. Pinch = zoom, tažení prázdné plochy = posun."
         case .front: return "Čelní pohled: tažením měníte X a výšku Z světla."
         case .side: return "Boční pohled: tažením měníte Y a výšku Z. Publikum je vpravo, červená čára = oči diváků."
-        case .threeD: return "Tažením otáčíte kameru, štípnutím zoomujete, klepnutím vyberete světlo. Haze zvýrazní kužely."
+        case .threeD: return "Tažení = otáčení, pinch = zoom, klepnutí = výběr světla."
         }
     }
 }

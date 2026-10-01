@@ -1155,7 +1155,7 @@ function onBind(e) {
   touch();
   if (b === '@name' || b === '@color') { if (S.ui.tab === 'lights' || S.ui.tab === 'objects') renderPanel(); }
 }
-for (const el of [panelEl, inspEl, document.querySelector('.bar')]) { el.addEventListener('input', onBind); el.addEventListener('change', onBind); }
+for (const el of [panelEl, inspEl, document.querySelector('#stageview .bar')]) { el.addEventListener('input', onBind); el.addEventListener('change', onBind); }
 panelEl.addEventListener('input', e => { if (e.target.id === 'libq') { panelLib.q = e.target.value; const pos = e.target.selectionStart; renderPanel(); const i = $('#libq'); i.focus(); i.setSelectionRange(pos, pos); } });
 panelEl.addEventListener('change', e => { if (e.target.id === 'libt') { panelLib.t = e.target.value; renderPanel(); } });
 

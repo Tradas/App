@@ -71,6 +71,7 @@ ul.msgs li{padding:6px 8px;border-left:3px solid var(--info);background:var(--pa
 ul.msgs li.bad{border-color:var(--bad)}ul.msgs li.warn{border-color:var(--warn)}ul.msgs li.ok{border-color:var(--ok)}
 ul.msgs li[data-id]{cursor:pointer}
 details{margin:8px 0}summary{cursor:pointer;color:var(--mut)}
+#bigBtn{display:none}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--panel2);border:1px solid var(--acc);border-radius:9px;padding:8px 14px;z-index:50;max-width:90vw}
 /* telefon: plátno zůstává nahoře (sticky), pod ním inspektor, panely a analýza */
 @media(max-width:900px){
@@ -80,7 +81,7 @@ details{margin:8px 0}summary{cursor:pointer;color:var(--mut)}
  main{display:flex;flex-direction:column;height:auto}
  aside{overflow:visible}
  #right{display:contents}
- #stageview{order:0;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;height:56dvh;background:var(--bg);border-bottom:1px solid var(--line)}
+ #stageview{order:0;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;height:66dvh;background:var(--bg);border-bottom:1px solid var(--line)}
  #inspector{order:1;background:var(--panel);border-bottom:1px solid var(--line)}
  #left{order:2;border:0}
  #analysis{order:3;background:var(--panel)}
@@ -92,6 +93,9 @@ details{margin:8px 0}summary{cursor:pointer;color:var(--mut)}
  input,select,textarea{font-size:16px!important}
  .f{grid-template-columns:80px 1fr 76px}
  .hint{font-size:11px;padding:3px 10px}
+ #bigBtn{display:inline-block}
+ body.big #stageview{height:92dvh}
+ body.big .hint{display:none}
 }
 </style>
 </head>
@@ -123,6 +127,7 @@ details{margin:8px 0}summary{cursor:pointer;color:var(--mut)}
       <label class="tog"><input type="checkbox" data-bind="ui.cones"> Kužely</label>
       <label class="tog"><input type="checkbox" data-bind="ui.heat"> Heatmapa (top)</label>
       <label class="tog"><input type="checkbox" data-bind="ui.snap"> Mřížka</label>
+      <button class="btn sm" id="bigBtn" title="Zvětšit / zmenšit vizualizér">⛶ Zvětšit</button>
     </div>
     <div class="cvwrap">
       <canvas id="cv"></canvas>
@@ -820,7 +825,7 @@ function camSetup() {
   const yw = rad(Cam.yaw), pt_ = rad(Cam.pitch), T = pt(Cam.tx, Cam.ty, Cam.tz);
   const pos = pt(T.x + Cam.dist * Math.sin(yw) * Math.cos(pt_), T.y + Cam.dist * Math.cos(yw) * Math.cos(pt_), T.z + Cam.dist * Math.sin(pt_));
   const f = v3.norm(v3.sub(T, pos)), r = v3.norm(v3.cross(f, pt(0, 0, 1))), u = v3.cross(r, f);
-  cam = { pos, f, r, u, focal: H / (2 * Math.tan(rad(26))) };
+  cam = { pos, f, r, u, focal: Math.min(H, W * 1.15) / (2 * Math.tan(rad(26))) };
 }
 function P3(p) {
   const v = v3.sub(p, cam.pos), zc = v3.dot(v, cam.f);
@@ -837,10 +842,11 @@ function line3(a, b, col, lw = 1) {
 }
 function camPreset(v) {
   const R = S.room, st = S.stage;
-  Cam.tx = R.w / 2; Cam.ty = R.d * 0.38; Cam.tz = 1.8; Cam.dist = Math.max(R.w, R.d) * 1.5;
+  Cam.tx = st.x; Cam.ty = st.y + st.d / 2 + 1; Cam.tz = 1.6;
+  Cam.dist = clamp(Math.max(st.w * 1.6, st.d * 2.3, 10), 8, 60);
   const m = { front: [0, 8], side: [90, 8], top: [0, 89], persp: [28, 24] }[v] || [28, 24];
   Cam.yaw = m[0]; Cam.pitch = m[1];
-  if (v === 'side') { Cam.tx = R.w / 2; } Cam.ty = v === 'top' ? R.d / 2 : st.y + st.d / 2 + 2;
+  if (v === 'top') { Cam.ty = R.d / 2; Cam.dist = Math.max(R.w, R.d) * 1.5; }
 }
 
 const View3D = {
@@ -1038,6 +1044,11 @@ const endDrag = e => {
 };
 cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
 cv.addEventListener('wheel', e => { e.preventDefault(); if (S.ui.view === '3d') Cam.dist = clamp(Cam.dist * (1 + e.deltaY * 0.001), 6, 90); else { ZM.z = clamp(ZM.z * (1 - e.deltaY * 0.001), 1, 6); if (ZM.z === 1) { ZM.px = 0; ZM.py = 0; } syncZoomBtn(); } requestRender(); }, { passive: false });
+$('#bigBtn').addEventListener('click', e => {
+  const big = document.body.classList.toggle('big');
+  e.currentTarget.textContent = big ? '⛶ Zmenšit' : '⛶ Zvětšit';
+  window.scrollTo({ top: 0 });
+});
 $('#zoomReset').addEventListener('click', () => { ZM.z = 1; ZM.px = 0; ZM.py = 0; syncZoomBtn(); requestRender(); });
 new ResizeObserver(() => { resize(); requestRender(); }).observe(cv);
 

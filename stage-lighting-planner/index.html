@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plánovač pódiového osvětlení</title>
+<style>
+:root{--bg:#0b0e14;--panel:#121722;--panel2:#181f2e;--line:#262f43;--txt:#e6eaf2;--mut:#8b95ab;--acc:#ffb347;--ok:#4cd08a;--warn:#ffcc4d;--bad:#ff5d6c;--info:#6ab6ff}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:13px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.2px;flex:1}
+header h1 span{color:var(--acc)}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 10px;cursor:pointer}
+.btn:hover{border-color:var(--acc)}
+.btn.pri{background:var(--acc);color:#1a1205;border-color:var(--acc);font-weight:600}
+.btn.sm{padding:2px 7px;font-size:12px}
+.btn.danger:hover{border-color:var(--bad);color:var(--bad)}
+main{display:grid;grid-template-columns:330px minmax(0,1fr) 340px;height:calc(100% - 45px)}
+aside{background:var(--panel);overflow:auto;min-height:0}
+#left{border-right:1px solid var(--line)}
+#right{border-left:1px solid var(--line)}
+#stageview{display:flex;flex-direction:column;min-width:0;min-height:0}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+.tabs{display:flex;gap:2px;flex-wrap:wrap}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:6px 9px;cursor:pointer;color:var(--mut)}
+.tab.on{color:var(--txt);border-color:var(--acc)}
+.tog{display:flex;align-items:center;gap:4px;color:var(--mut);cursor:pointer;user-select:none}
+.tog input{accent-color:var(--acc)}
+.spacer{flex:1}
+.cvwrap{position:relative;flex:1;min-height:320px}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#cam{position:absolute;left:10px;top:10px;display:none;gap:5px}
+.hint{padding:5px 12px;color:var(--mut);font-size:12px;border-top:1px solid var(--line);background:var(--panel)}
+.pad{padding:10px 12px}
+h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:14px 0 6px;font-weight:600}
+h3:first-child{margin-top:0}
+.f{display:grid;grid-template-columns:92px 1fr 64px;gap:6px;align-items:center;margin:3px 0}
+.f.n{grid-template-columns:92px 1fr}
+.f span{color:var(--mut)}
+.f input[type=range]{width:100%;accent-color:var(--acc)}
+input[type=number],input[type=text],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;width:100%}
+input[type=color]{width:100%;height:26px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:1px}
+.sw{display:flex;gap:4px;margin:4px 0 2px 98px;flex-wrap:wrap}
+.sw i{width:18px;height:18px;border-radius:50%;border:1px solid #fff3;cursor:pointer}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;align-items:center}
+.item{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;margin:4px 0;background:var(--panel2);cursor:pointer}
+.item.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.item .nm{flex:1;min-width:0}
+.item .nm b{display:block;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .nm small{color:var(--mut)}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;border:1px solid #fff4}
+.chip{font-size:10px;padding:1px 6px;border-radius:9px;background:#ffffff14;color:var(--mut)}
+.chip.bad{background:#ff5d6c33;color:var(--bad)}
+.chip.warn{background:#ffcc4d26;color:var(--warn)}
+.qty{width:46px!important}
+.mut{color:var(--mut)}
+.mode{display:block;width:100%;text-align:left;margin:5px 0;padding:8px 10px}
+.mode small{display:block;color:var(--mut);margin-top:2px}
+.meter{display:grid;grid-template-columns:78px 1fr 34px;gap:8px;align-items:center;margin:5px 0}
+.meter div.b{height:8px;border-radius:5px;background:#ffffff12;overflow:hidden}
+.meter div.b i{display:block;height:100%}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:8px 0;color:var(--mut)}
+.stats b{color:var(--txt);font-weight:600}
+ul.msgs{list-style:none;margin:6px 0;padding:0}
+ul.msgs li{padding:6px 8px;border-left:3px solid var(--info);background:var(--panel2);border-radius:0 6px 6px 0;margin:4px 0}
+ul.msgs li.bad{border-color:var(--bad)}ul.msgs li.warn{border-color:var(--warn)}ul.msgs li.ok{border-color:var(--ok)}
+ul.msgs li[data-id]{cursor:pointer}
+details{margin:8px 0}summary{cursor:pointer;color:var(--mut)}
+@media(max-width:1150px){
+ main{grid-template-columns:1fr;height:auto}
+ #stageview{order:-1;height:75vh}
+ aside{max-height:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎛️ Plánovač pódiového osvětlení <span>· 2D · boční pohled · 3D</span></h1>
+  <button class="btn" data-act="exportJson">Uložit plán</button>
+  <button class="btn" data-act="importJson">Načíst plán</button>
+  <button class="btn" data-act="png">PNG</button>
+  <button class="btn danger" data-act="reset">Reset</button>
+  <input type="file" id="fileJson" accept="application/json,.json" hidden>
+</header>
+<main>
+  <aside id="left">
+    <div class="tabs bar" id="ltabs">
+      <button class="tab" data-tab="scene">Scéna</button>
+      <button class="tab" data-tab="modes">Režimy</button>
+      <button class="tab" data-tab="lib">Knihovna</button>
+      <button class="tab" data-tab="lights">Světla</button>
+      <button class="tab" data-tab="objects">Objekty</button>
+    </div>
+    <div class="pad" id="panel"></div>
+  </aside>
+  <section id="stageview">
+    <div class="bar">
+      <div class="tabs" id="vtabs">
+        <button class="tab" data-view="top">Top (2D)</button>
+        <button class="tab" data-view="front">📐 Zepředu</button>
+        <button class="tab" data-view="side">📐 Z boku</button>
+        <button class="tab" data-view="3d">🎲 3D</button>
+      </div>
+      <span class="spacer"></span>
+      <label class="tog"><input type="checkbox" data-bind="haze.on"> Haze</label>
+      <label class="tog"><input type="checkbox" data-bind="ui.cones"> Kužely</label>
+      <label class="tog"><input type="checkbox" data-bind="ui.heat"> Heatmapa (top)</label>
+      <label class="tog"><input type="checkbox" data-bind="ui.snap"> Mřížka</label>
+    </div>
+    <div class="cvwrap">
+      <canvas id="cv"></canvas>
+      <div id="cam" class="row">
+        <button class="btn sm" data-act="cam" data-v="front">Zepředu</button>
+        <button class="btn sm" data-act="cam" data-v="side">Z boku</button>
+        <button class="btn sm" data-act="cam" data-v="top">Shora</button>
+        <button class="btn sm" data-act="cam" data-v="persp">Perspektiva</button>
+      </div>
+    </div>
+    <div class="hint" id="hint"></div>
+  </section>
+  <aside id="right">
+    <div class="pad" id="inspector"></div>
+    <div class="pad" id="analysis" style="border-top:1px solid var(--line)"></div>
+  </aside>
+</main>
+
+<script>
+'use strict';
+/* =====================================================================
+   1. Pomocné funkce
+   ===================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const rad = d => d * Math.PI / 180;
+const deg = r => r * 180 / Math.PI;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const r2 = v => Math.round(v * 100) / 100;
+const v3 = {
+  sub: (a, b) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }),
+  dot: (a, b) => a.x * b.x + a.y * b.y + a.z * b.z,
+  cross: (a, b) => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x }),
+  len: a => Math.hypot(a.x, a.y, a.z),
+  norm: a => { const l = Math.hypot(a.x, a.y, a.z) || 1; return { x: a.x / l, y: a.y / l, z: a.z / l }; },
+};
+const hexToRgb = h => { const n = parseInt(h.slice(1), 16); return { r: n >> 16 & 255, g: n >> 8 & 255, b: n & 255 }; };
+const rgba = (c, a) => `rgba(${c.r},${c.g},${c.b},${a})`;
+const pt = (x, y, z) => ({ x, y, z });
+
+function hull(pts) {
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (p.length < 3) return p;
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  up.pop(); lo.pop();
+  return lo.concat(up);
+}
+
+/* =====================================================================
+   2. Knihovna světel (výchozí = seznam od uživatele; počet = sklad)
+   ===================================================================== */
+const TYPES = ['PAR', 'Beam', 'Wash', 'Spot', 'Fresnel', 'Bar', 'Flood', 'Follow'];
+// orientační světelný výkon (lm na W příkonu) podle technologie
+const EFF = { led: 35, tungsten: 14, discharge: 28 };
+// [název, typ, příkon W, výchozí úhel, min, max, sklad, technologie]
+const LIB_RAW = [
+  ['LED Wall Wash 72×12W RGBW IP64', 'Wash', 864, 40, 20, 80, 2, 'led'],
+  ['LED Can RGBWA+UV Wireless (P-163B)', 'PAR', 60, 30, 15, 45, 12, 'led'],
+  ['LED TMH-20 Wash', 'Wash', 200, 25, 10, 45, 4, 'led'],
+  ['LED Rotating Wash RGBW 36×10W', 'Wash', 360, 25, 10, 50, 10, 'led'],
+  ['LED Beam BAR RGBW 8×10W', 'Beam', 80, 4, 3, 10, 4, 'led'],
+  ['LED Lightmaxx Vector 280W 10R', 'Beam', 280, 3, 2, 4, 10, 'discharge'],
+  ['LED Spider Light', 'Beam', 80, 12, 8, 25, 2, 'led'],
+  ['ROBE Color Spot 575W', 'Spot', 575, 20, 11, 38, 2, 'discharge'],
+  ['ROBE Color Wash 575W', 'Wash', 575, 30, 12, 60, 2, 'discharge'],
+  ['MAC 550 Profile', 'Spot', 550, 20, 12, 32, 4, 'discharge'],
+  ['FHR 500/650W', 'Fresnel', 650, 35, 10, 60, 2, 'tungsten'],
+  ['FHR 1000W', 'Fresnel', 1000, 40, 12, 65, 2, 'tungsten'],
+  ['ARRI 650W Plus Man', 'Fresnel', 650, 40, 10, 60, 4, 'tungsten'],
+  ['ARRI Junior 1000W', 'Fresnel', 1000, 40, 10, 60, 4, 'tungsten'],
+  ['ARRI TRUE BLUE T1 1000W', 'Fresnel', 1000, 40, 12, 60, 4, 'tungsten'],
+  ['ARRI TRUE BLUE T1 1000W MAN', 'Fresnel', 1000, 40, 12, 60, 4, 'tungsten'],
+  ['Eurolite LED THA-250F', 'Fresnel', 250, 40, 20, 60, 4, 'led'],
+  ['Profile FS-600 26° 600W', 'Spot', 600, 26, 26, 26, 4, 'tungsten'],
+  ['ETC Source Four JR 25°–50° 600W', 'Spot', 600, 36, 25, 50, 2, 'tungsten'],
+  ['AHR 500W asymetrický', 'Flood', 500, 95, 80, 110, 2, 'tungsten'],
+  ['HHR 1000W Follow Spot', 'Follow', 1000, 8, 4, 16, 1, 'tungsten'],
+  ['ADB DN204 2000W Follow Spot', 'Follow', 2000, 6, 3, 12, 1, 'tungsten'],
+  ['LED PAR 32 ML-30 QCL RGBW', 'PAR', 30, 30, 30, 30, 22, 'led'],
+  ['LED PAR 64 Cameo QCL RGBW', 'PAR', 180, 25, 25, 25, 16, 'led'],
+  ['LED PAR 64 RGBWA+UV 6in1', 'PAR', 150, 25, 25, 25, 20, 'led'],
+  ['LED PAR Varytec 64 RGBWA+UV 6in1', 'PAR', 150, 25, 25, 25, 34, 'led'],
+  ['LED Punch CLS-18 QCL RGBW', 'PAR', 180, 30, 30, 30, 20, 'led'],
+  ['LED BAR Starline 6in1', 'Bar', 120, 35, 20, 60, 10, 'led'],
+  ['Tri LED Show BAR 18×3W', 'Bar', 54, 30, 25, 40, 8, 'led'],
+  ['LED eBAR r24×15W RGBWA 5in1', 'Bar', 360, 25, 15, 40, 20, 'led'],
+].map((r, i) => ({ id: 'd' + i, name: r[0], type: r[1], watt: r[2], angle: r[3], min: r[4], max: r[5], stock: r[6], tech: r[7] }));
+
+const allLib = () => LIB_RAW.concat(S.customLib);
+const libById = id => allLib().find(x => x.id === id) || LIB_RAW[0];
+const libOf = l => libById(l.libId);
+const lumens = lb => lb.lm || lb.watt * EFF[lb.tech || 'led'];
+const usedOf = id => S.lights.filter(l => l.libId === id).length;
+
+/* =====================================================================
+   3. Stav scény
+   ===================================================================== */
+const KEY = 'stagePlanner.v1';
+const ROLES = { auto: 'Auto', front: 'Přední (key/fill)', back: 'Zadní (backlight)', side: 'Boční (side)', counter: 'Kontra', bg: 'Pozadí', fx: 'Efekt (paprsky)' };
+
+function defaultState() {
+  return {
+    room: { w: 16, d: 18, h: 7 },
+    stage: { x: 8, y: 1.5, w: 9, d: 6, h: 0.8 },
+    truss: { h: 5.5, frontInset: 0.6, backInset: 0.6 },
+    aud: { eye: 1.2 },
+    haze: { on: false, density: 0.6 },
+    ui: { view: 'top', tab: 'scene', cones: true, heat: false, snap: true, replace: true },
+    openings: [
+      { type: 'door', wall: 'front', pos: 3, w: 1.4, h: 2.1, sill: 0 },
+      { type: 'door', wall: 'right', pos: 2.5, w: 1.1, h: 2.1, sill: 0 },
+      { type: 'window', wall: 'left', pos: 5, w: 2, h: 1.4, sill: 1.2 },
+      { type: 'window', wall: 'left', pos: 11, w: 2, h: 1.4, sill: 1.2 },
+    ],
+    objects: [
+      { id: 1, kind: 'cyl', name: 'Herec', x: 8, y: 4.5, lift: 0, r: 0.22, h: 1.7, color: '#7d8aa8', head: true },
+      { id: 2, kind: 'box', name: 'Reproduktor L', x: 4.2, y: 6.6, lift: 0, w: 0.7, d: 0.6, h: 1.2, color: '#3a4560' },
+      { id: 3, kind: 'box', name: 'Reproduktor P', x: 11.8, y: 6.6, lift: 0, w: 0.7, d: 0.6, h: 1.2, color: '#3a4560' },
+    ],
+    lights: [], customLib: [], nextId: 100, nextN: 1, sel: null,
+  };
+}
+let S = defaultState();
+
+const trussY = () => ({ f: S.stage.y + S.stage.d - S.truss.frontInset, b: S.stage.y + S.truss.backInset });
+const inStage = (x, y) => x >= S.stage.x - S.stage.w / 2 && x <= S.stage.x + S.stage.w / 2 && y >= S.stage.y && y <= S.stage.y + S.stage.d;
+const surfZ = (x, y) => inStage(x, y) ? S.stage.h : 0;
+const selEnt = () => !S.sel ? null : (S.sel.kind === 'light' ? S.lights : S.objects).find(e => e.id === S.sel.id) || null;
+const lightDir = l => { const t = rad(l.tilt), p = rad(l.pan); return { x: Math.sin(t) * Math.sin(p), y: Math.sin(t) * Math.cos(p), z: -Math.cos(t) }; };
+
+// pan: 0 = k publiku (+Y), 90 = doprava (+X); tilt: 0 = svisle dolů, 90 = vodorovně
+function aimAt(l, t) {
+  const v = v3.sub(t, l);
+  const hz = Math.hypot(v.x, v.y);
+  l.tilt = r2(clamp(deg(Math.atan2(hz, -v.z)), 0, 150));
+  if (hz > 1e-3) l.pan = r2(deg(Math.atan2(v.x, v.y)));
+}
+
+function addLight(lb, o = {}) {
+  const l = {
+    id: S.nextId++, n: S.nextN++, libId: lb.id,
+    x: o.x ?? S.stage.x, y: o.y ?? trussY().f, z: o.z ?? S.truss.h, pan: 180, tilt: 30,
+    angle: clamp(o.angle ?? lb.angle, lb.min, lb.max), intensity: o.int ?? 80,
+    color: o.col || (lb.tech === 'tungsten' ? '#ffd9a8' : '#ffffff'), role: o.role || 'auto',
+  };
+  aimAt(l, o.aim || chestPoint());
+  S.lights.push(l);
+  return l;
+}
+const chestPoint = () => pt(S.stage.x, S.stage.y + S.stage.d / 2, S.stage.h + 1.5);
+
+/* =====================================================================
+   4. Fyzika: paprsky, dopad na plochy, osvětlenost
+   ===================================================================== */
+let G = [], Grev = -1, rev = 0;
+
+function traceRay(o, d, maxT = 40) {
+  const R = S.room, st = S.stage, x0 = st.x - st.w / 2, x1 = st.x + st.w / 2, y0 = st.y, y1 = st.y + st.d;
+  let best = { t: maxT, surf: 'none' };
+  const tol = 0.02;
+  const test = (t, surf) => {
+    if (t > 1e-3 && t < best.t) {
+      const px = o.x + d.x * t, py = o.y + d.y * t, pz = o.z + d.z * t;
+      if (px >= -tol && px <= R.w + tol && py >= -tol && py <= R.d + tol && pz >= -tol && pz <= R.h + tol) best = { t, surf };
+    }
+  };
+  if (d.z < -1e-6) {
+    const td = (st.h - o.z) / d.z;
+    if (td > 1e-3) { const px = o.x + d.x * td, py = o.y + d.y * td; if (px >= x0 && px <= x1 && py >= y0 && py <= y1) test(td, 'deck'); }
+    test(-o.z / d.z, 'floor');
+  }
+  if (d.z > 1e-6) test((R.h - o.z) / d.z, 'ceil');
+  if (d.x > 1e-6) test((R.w - o.x) / d.x, 'wallR'); else if (d.x < -1e-6) test(-o.x / d.x, 'wallL');
+  if (d.y > 1e-6) test((R.d - o.y) / d.y, 'wallF'); else if (d.y < -1e-6) test(-o.y / d.y, 'wallB');
+  best.p = pt(o.x + d.x * best.t, o.y + d.y * best.t, o.z + d.z * best.t);
+  return best;
+}
+const NORMALS = { deck: pt(0, 0, 1), floor: pt(0, 0, 1), ceil: pt(0, 0, -1), wallB: pt(0, 1, 0), wallF: pt(0, -1, 0), wallL: pt(1, 0, 0), wallR: pt(-1, 0, 0), none: pt(0, 0, 1) };
+const UP = pt(0, 0, 1);
+const RIM_N = 28;
+
+function computeGeom() {
+  G = S.lights.map(l => {
+    const lb = libOf(l), o = pt(l.x, l.y, l.z), d = lightDir(l);
+    const h = rad(clamp(l.angle / 2, 0.5, 80));
+    const cd = lumens(lb) * l.intensity / 100 / (2 * Math.PI * (1 - Math.cos(h)));
+    const a = Math.abs(d.z) < 0.9 ? pt(0, 0, 1) : pt(1, 0, 0);
+    const u = v3.norm(v3.cross(d, a)), v = v3.cross(d, u);
+    const rim = [];
+    for (let k = 0; k < RIM_N; k++) {
+      const f = k / RIM_N * Math.PI * 2, c = Math.cos(f), s = Math.sin(f), ch = Math.cos(h), sh = Math.sin(h);
+      rim.push(traceRay(o, v3.norm(pt(d.x * ch + sh * (u.x * c + v.x * s), d.y * ch + sh * (u.y * c + v.y * s), d.z * ch + sh * (u.z * c + v.z * s)))));
+    }
+    return { l, lb, o, d, h, cd, cosField: Math.cos(Math.min(h * 1.5, Math.PI)), rim, axis: traceRay(o, d), col: hexToRgb(l.color) };
+  });
+  Grev = rev;
+}
+const ensureGeom = () => { if (Grev !== rev) computeGeom(); };
+
+// osvětlenost [lx] v bodě P na ploše s normálou n (null = kolmo ke směru světla)
+function lightE(g, P, n) {
+  const vx = P.x - g.o.x, vy = P.y - g.o.y, vz = P.z - g.o.z;
+  const d2 = vx * vx + vy * vy + vz * vz, dist = Math.sqrt(d2) || 1e-6;
+  const dx = vx / dist, dy = vy / dist, dz = vz / dist;
+  const c = dx * g.d.x + dy * g.d.y + dz * g.d.z;
+  if (c <= g.cosField) return 0;
+  const f = 1 - smooth(0.5 * g.h, 1.5 * g.h, Math.acos(clamp(c, -1, 1)));
+  const ci = n ? Math.max(0, -(dx * n.x + dy * n.y + dz * n.z)) : 1;
+  return g.cd * f * ci / Math.max(d2, 0.25);
+}
+const totalE = (P, n, wide) => { let e = 0; for (const g of G) if (!wide || g.l.angle > 15) e += lightE(g, P, n); return e; };
+
+// barva plochy po osvětlení (jednoduchý tone-mapping)
+function shade(hex, P, n) {
+  const b = hexToRgb(hex), X = [0, 0, 0];
+  for (const g of G) {
+    const E = lightE(g, P, n); if (E <= 0) continue;
+    X[0] += E * g.col.r / 255; X[1] += E * g.col.g / 255; X[2] += E * g.col.b / 255;
+  }
+  const c = [b.r, b.g, b.b].map((v, i) => Math.round(clamp(v * (0.14 + 1.25 * (1 - Math.exp(-X[i] / 700))), 0, 255)));
+  return `rgb(${c})`;
+}
+
+/* =====================================================================
+   5. Analýza a doporučení
+   ===================================================================== */
+let A = { msgs: [], flags: new Map(), score: { depth: 0, contrast: 0, safety: 100 }, stats: {} };
+const GLARE_LX = 40, BURN_LX = 3500;
+
+function analyze() {
+  ensureGeom();
+  const st = S.stage, R = S.room, x0 = st.x - st.w / 2, x1 = st.x + st.w / 2, y0 = st.y, y1 = st.y + st.d;
+  const msgs = [], flags = new Map();
+  const add = (sev, text, id) => msgs.push({ sev, text, id });
+  const flag = (id, k) => { if (!flags.has(id)) flags.set(id, new Set()); flags.get(id).add(k); };
+  const nm = g => `#${g.l.n} ${g.lb.name}`;
+
+  // --- pokrytí pódia
+  let n = 0, sum = 0, mn = 1e9, mx = 0, fSum = 0, fN = 0, fMax = 0, cov = 0, fPt = null;
+  for (let x = x0 + 0.25; x < x1; x += 0.5) for (let y = y0 + 0.25; y < y1; y += 0.5) {
+    const E = totalE(pt(x, y, st.h), UP, true);   // úzké efektové paprsky se do plošných hodnot nepočítají
+    n++; sum += E; mn = Math.min(mn, E); mx = Math.max(mx, E); if (E >= 150) cov++;
+    if (y > y1 - 1.5) { fSum += E; fN++; if (E > fMax) { fMax = E; fPt = pt(x, y, st.h); } }
+  }
+  const avg = n ? sum / n : 0, fAvg = fN ? fSum / fN : 0;
+  const stats = { avg, uni: avg ? mn / avg : 0, cov: n ? cov / n : 0, watt: G.reduce((a, g) => a + g.lb.watt * g.l.intensity / 100, 0), count: G.length, max: mx };
+
+  // --- referenční bod (herec) a rozdělení světel na přední / boční / zadní
+  const P = chestPoint();
+  let front = 0, back = 0, side = 0, fL = 0, fR = 0, bgHits = 0, narrow = 0;
+  const elev = [];
+  for (const g of G) {
+    const E = lightE(g, P, null);
+    const dx = g.o.x - P.x, dy = g.o.y - P.y, az = Math.abs(deg(Math.atan2(dx, dy)));
+    if (E > 0) {
+      if (az < 60) { front += E; if (dx < 0) fL += E; else fR += E; const el = deg(Math.atan2(g.o.z - P.z, Math.hypot(dx, dy))); elev.push({ g, el, E }); }
+      else if (az < 120) side += E; else back += E;
+    }
+    if (g.axis.surf === 'wallB') bgHits++;
+    if (g.l.angle <= 15) narrow++;
+  }
+
+  // --- bezpečnost: oslnění publika
+  const ay0 = y1 + 0.8, ay1 = R.d - 0.3, eye = S.aud.eye, aud = [];
+  for (let y = ay0; y <= ay1; y += 0.8) for (let x = 0.4; x <= R.w - 0.4; x += 0.8) aud.push(pt(x, y, eye));
+  let glareCnt = 0;
+  for (const g of G) {
+    let cnt = 0, mE = 0;
+    for (const Pa of aud) {
+      const v = v3.sub(Pa, g.o), u = v3.norm(v);
+      if (u.y < 0.26) continue;                       // světlo je mimo zorné pole diváka (dívá se k pódiu)
+      if (v3.dot(u, g.d) <= g.cosField) continue;     // divák není v kuželu
+      const E = lightE(g, Pa, null);
+      if (E > GLARE_LX) { cnt++; mE = Math.max(mE, E); }
+    }
+    if (cnt) {
+      glareCnt++; flag(g.l.id, 'glare');
+      add(mE > 250 ? 'bad' : 'warn', `Oslnění publika: ${nm(g)} svítí do očí divákům (≈ ${Math.round(cnt / aud.length * 100)} % plochy, až ${Math.round(mE)} lx v očích). Zvyšte tilt k pódiu, zúžte kužel nebo světlo zastíňte.`, g.l.id);
+    }
+    const hzMain = Math.abs(Math.cos(rad(g.l.pan)));
+    const sideAcross = g.l.role === 'side' && hzMain < 0.5;
+    if (g.l.tilt > 90 && g.l.role !== 'bg' && g.l.role !== 'fx') { flag(g.l.id, 'low'); add('warn', `${nm(g)} míří vzhůru (tilt ${Math.round(g.l.tilt)}°) – paprsek mine pódium.`, g.l.id); }
+    else if (g.l.tilt > 70 && g.l.tilt <= 90 && !sideAcross) { flag(g.l.id, 'low'); add('warn', `Nízký úhel: ${nm(g)} má tilt ${Math.round(g.l.tilt)}° od svislice – téměř vodorovný paprsek hrozí oslněním a odleskem. Doporučeno ≤ 60°.`, g.l.id); }
+
+    // paprsky mimo pódium
+    if (g.l.role !== 'fx') {
+      const ok = r => r.surf === 'deck' || r.surf === 'wallB';
+      const frac = g.rim.filter(ok).length / g.rim.length;
+      if (!ok(g.axis) && frac < 0.5) {
+        const where = { floor: 'podlahu mimo pódium', wallL: 'levou stěnu', wallR: 'pravou stěnu', wallF: 'přední stěnu', ceil: 'strop', none: 'prostor' }[g.axis.surf] || 'mimo pódium';
+        flag(g.l.id, 'off'); add('warn', `Mimo pódium: ${nm(g)} míří na ${where}.`, g.l.id);
+      } else if (frac < 0.6 && g.l.role !== 'side') { flag(g.l.id, 'off'); add('info', `${nm(g)}: jen ${Math.round(frac * 100)} % kuželu dopadá na pódium nebo pozadí.`, g.l.id); }
+    }
+    if (g.o.x < -0.01 || g.o.x > R.w + 0.01 || g.o.y < -0.01 || g.o.y > R.d + 0.01 || g.o.z > R.h) add('info', `${nm(g)} je mimo prostor místnosti.`, g.l.id);
+  }
+
+  // --- přepal front zóny
+  if (fPt && (fMax > BURN_LX || (fAvg > 2.2 * avg && fAvg > 400))) {
+    const top = G.filter(g => g.l.angle > 15).map(g => ({ g, E: lightE(g, fPt, UP) })).sort((a, b) => b.E - a.E).slice(0, 2).filter(x => x.E > 0);
+    top.forEach(x => flag(x.g.l.id, 'burn'));
+    add('bad', `Přepal front zóny (přední 1,5 m pódia): max ${Math.round(fMax)} lx, průměr ${Math.round(fAvg)} lx vs. ${Math.round(avg)} lx na celém pódiu. Hlavní zdroje: ${top.map(x => '#' + x.g.l.n).join(', ')} – snižte intenzitu nebo je rozprostřete.`, top[0] && top[0].g.l.id);
+  }
+
+  // --- hloubka / kontrast
+  if (!G.length) add('info', 'Zatím žádná světla – použijte záložku Režimy (⭐ Doporučené rozmístění) nebo přidejte světla z Knihovny.');
+  else {
+    const ratioB = front > 0 ? back / front : (back > 0 ? 9 : 0);
+    if (back === 0) add('warn', 'Chybí zadní světlo (backlight/kontra). Bez něj je herec plochý a splývá s pozadím – přidejte 2 světla na zadní truss ve výšce ≥ 4 m.');
+    else if (ratioB < 0.3) add('info', `Zadní světlo je slabé (${Math.round(ratioB * 100)} % předního) – pro hloubku zvyšte na 60–120 %.`);
+    else if (ratioB > 2.5) add('info', 'Zadní světlo výrazně převyšuje přední – tváře budou ve stínu (silueta). Zvyšte key nebo snižte backlight.');
+    if (front > 0 && side === 0) add('info', 'Boční světlo (side light) chybí – přidáním z výšky 1,5–2,5 m se vyniknou tvary těla a oddělí se od pozadí.');
+    if (!bgHits) add('info', 'Pozadí není nasvíceno – wash na zadní stěnu (barevný, tlumenější než herec) zvýší vizuální hloubku.');
+    if (front > 0) {
+      const hi = Math.max(fL, fR), lo = Math.min(fL, fR);
+      if (lo === 0) add('info', 'Přední světlo jen z jedné strany – přidejte fill z opačné strany (poměr key:fill ≈ 2:1) pro měkčí stíny.');
+      else {
+        const q = hi / lo;
+        if (q < 1.2) add('info', `Poměr key:fill je ${q.toFixed(1)}:1 – plochý obraz. Snižte fill na ~50 % klíčového světla.`);
+        else if (q > 5) add('info', `Poměr key:fill je ${q.toFixed(1)}:1 – stíny jsou tvrdé. Přidejte nebo zvyšte fill.`);
+      }
+      const bad = elev.filter(e => e.el < 25 || e.el > 65);
+      bad.forEach(e => add('info', `${nm(e.g)}: výška nad hercem ${Math.round(e.el)}° – ideální přední světlo je 35–55° (nižší zplošťuje a oslňuje, vyšší dělá stíny v očích).`, e.g.l.id));
+    }
+    if (narrow && !S.haze.on) add('info', `Máte ${narrow}× úzký paprsek (≤ 15°). Zapněte haze, jinak nebudou paprsky ve vzduchu vidět.`);
+    if (S.haze.on && !narrow) add('info', 'Haze je zapnuté, ale nejsou tu úzké paprsky (Beam/Spot) – efekt se neuplatní.');
+    if (S.haze.on && S.haze.density > 0.8) add('info', 'Husté haze zplošťuje kontrast – doporučeno 0,3–0,6.');
+    if (S.haze.on && glareCnt) add('warn', 'Haze zvyšuje viditelnost (a nepříjemnost) paprsků mířících do publika – nejdřív odstraňte oslnění.');
+  }
+  if (S.truss.h > R.h - 0.3) add('bad', `Truss (${S.truss.h} m) je příliš blízko stropu místnosti (${R.h} m).`);
+  if (S.truss.h - st.h < 3) add('info', 'Truss je jen ' + r2(S.truss.h - st.h) + ' m nad pódiem – kužele budou malé a světla budou oslňovat herce. Doporučeno ≥ 3,5 m.');
+  for (const lb of allLib()) { const u = usedOf(lb.id); if (u > lb.stock) add('warn', `${lb.name}: použito ${u} ks, ale v inventáři jen ${lb.stock}.`); }
+
+  // --- skóre
+  const cl = (v, a = 0, b = 100) => clamp(v, a, b);
+  let depth = 0;
+  depth += 40 * cl(back / Math.max(front, 1e-6) / 0.6, 0, 1) * (back > 2.5 * front ? 0.6 : 1);
+  depth += 20 * cl(side / (0.25 * front + 1e-6), 0, 1);
+  depth += bgHits ? 20 : 0;
+  depth += S.haze.on ? (narrow ? 20 : 10) : 0;
+  let contrast = 0;
+  if (front > 0) {
+    const lo = Math.min(fL, fR), q = lo ? Math.max(fL, fR) / lo : Infinity;
+    contrast += q === Infinity ? 20 : q < 1.2 ? 20 + (q - 1) * 100 : q <= 4 ? 50 : 50 * cl(1 - (q - 4) / 6, 0.2, 1);
+  }
+  const pr = avg ? mx / avg : 0;
+  contrast += pr < 1.5 ? 50 * cl((pr - 1) / 0.5) : pr <= 4 ? 50 : 50 * cl(1 - (pr - 4) / 6, 0.3, 1);
+  if (!G.length) { depth = 0; contrast = 0; }
+  let safety = 100;
+  for (const set of flags.values()) { if (set.has('glare')) safety -= 25; if (set.has('low')) safety -= 8; if (set.has('burn')) safety -= 10; if (set.has('off')) safety -= 4; }
+  const order = { bad: 0, warn: 1, info: 2, ok: 3 };
+  if (G.length && !msgs.some(m => m.sev === 'bad' || m.sev === 'warn')) add('ok', 'Žádná varování – rozmístění je bezpečné a vyvážené.');
+  msgs.sort((a, b) => order[a.sev] - order[b.sev]);
+  A = { msgs, flags, score: { depth: Math.round(cl(depth)), contrast: Math.round(cl(contrast)), safety: Math.round(cl(safety)) }, stats };
+}
+
+/* =====================================================================
+   6. Režimy osvětlení (automatické rozmístění z knihovny)
+   ===================================================================== */
+const WARM = '#ffcf9a', COOL = '#9ec5ff', WHITE = '#ffffff', AMBER = '#ffb347', CYAN = '#55e0ff', BLUE = '#4a6cff';
+
+function libPick(prefs, type) {
+  const all = allLib();
+  for (const p of prefs) {
+    const c = all.filter(x => x.name.includes(p));
+    const free = c.find(x => usedOf(x.id) < x.stock);
+    if (free) return free;
+  }
+  for (const p of prefs) { const c = all.find(x => x.name.includes(p)); if (c) return c; }
+  const t = all.filter(x => x.type === type);
+  return t.find(x => usedOf(x.id) < x.stock) || t[0] || all[0];
+}
+function ctx0() {
+  const st = S.stage, ty = trussY(), cy = st.y + st.d / 2;
+  return { cx: st.x, cy, sw: st.w, deck: st.h, chest: chestPoint(), yF: ty.f, yB: ty.b, tz: S.truss.h, x0: st.x - st.w / 2, x1: st.x + st.w / 2 };
+}
+const PRESETS = {
+  three(c) {
+    return [
+      { p: ['Source Four', 'FS-600', 'Junior'], t: 'Spot', x: c.cx - c.sw * 0.22, y: c.yF, z: c.tz, aim: c.chest, angle: 36, int: 100, col: WARM, role: 'front' },
+      { p: ['Rotating Wash', 'TMH-20', 'Color Wash'], t: 'Wash', x: c.cx + c.sw * 0.28, y: c.yF, z: c.tz, aim: c.chest, angle: 40, int: 55, col: COOL, role: 'front' },
+      { p: ['PAR 64 Cameo', 'Varytec'], t: 'PAR', x: c.cx - 1.2, y: c.yB, z: c.tz, aim: pt(c.cx, c.cy + 0.3, c.deck + 1.2), int: 50, col: WHITE, role: 'back' },
+      { p: ['PAR 64 Cameo', 'Varytec'], t: 'PAR', x: c.cx + 1.2, y: c.yB, z: c.tz, aim: pt(c.cx, c.cy + 0.3, c.deck + 1.2), int: 50, col: WHITE, role: 'back' },
+    ];
+  },
+  back(c) {
+    return [-0.3, -0.1, 0.1, 0.3].map(k => ({ p: ['Varytec', 'PAR 64 RGBWA'], t: 'PAR', x: c.cx + k * c.sw, y: c.yB, z: c.tz, aim: pt(c.cx + k * c.sw, c.cy + 0.4, c.deck + 1.2), int: 70, col: COOL, role: 'back' }));
+  },
+  side(c) {
+    const o = [];
+    for (const [sx, col] of [[-1, AMBER], [1, CYAN]]) for (const dy of [-1.2, 1]) {
+      o.push({ p: ['PAR 64 Cameo', 'Punch'], t: 'PAR', x: c.cx + sx * (c.sw / 2 + 0.9), y: c.cy + dy, z: c.deck + 2.2, aim: pt(c.cx - sx * c.sw * 0.38, c.cy + dy, c.deck), int: 65, col, role: 'side' });
+    }
+    return o;
+  },
+  counter(c) {
+    return [-3.2, -1.1, 1.1, 3.2].map((k, i) => ({ p: ['Vector', 'Beam BAR'], t: 'Beam', x: c.cx + k * c.sw / 9, y: c.yB, z: c.tz, aim: pt(c.cx - k * c.sw / 18, c.cy + 1.4, c.deck), int: 100, col: i % 2 ? CYAN : WHITE, role: 'counter' }));
+  },
+  bg(c) {
+    return [-0.3, 0, 0.3].map(k => ({ p: ['Wall Wash', 'Rotating Wash'], t: 'Wash', x: c.cx + k * c.sw, y: c.yB, z: c.tz, aim: pt(c.cx + k * c.sw, 0, 2.4), angle: 50, int: 65, col: BLUE, role: 'bg' }));
+  },
+  haze(c) {
+    const my = (c.yF + c.yB) / 2;
+    return [-3, -1, 1, 3].map(k => ({ p: ['Vector', 'Beam BAR'], t: 'Beam', x: c.cx + k * c.sw / 9, y: my, z: c.tz, aim: pt(c.cx - k * c.sw / 9 * 1.4, c.cy + 1.2, c.deck), int: 100, col: WHITE, role: 'fx' }));
+  },
+};
+function applyPreset(name, keep) {
+  if (!keep && S.ui.replace) S.lights = [];
+  const c = ctx0();
+  const names = name === 'full' ? ['three', 'bg', 'side', 'counter', 'haze'] : [name];
+  for (const nme of names) for (const d of PRESETS[nme](c)) addLight(libPick(d.p, d.t), d);
+  if (name === 'haze' || name === 'counter' || name === 'full') { S.haze.on = true; S.haze.density = 0.5; }
+  S.sel = null;
+}
+
+/* =====================================================================
+   7. Kreslení – společné
+   ===================================================================== */
+const cv = $('#cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  const r = cv.getBoundingClientRect(); DPR = window.devicePixelRatio || 1;
+  W = Math.max(50, r.width); H = Math.max(50, r.height);
+  cv.width = W * DPR; cv.height = H * DPR;
+}
+function txt(s, x, y, o = {}) {
+  ctx.fillStyle = o.c || '#8b95ab'; ctx.font = `${o.b ? '600 ' : ''}${o.sz || 11}px system-ui,sans-serif`;
+  ctx.textAlign = o.al || 'left'; ctx.textBaseline = o.bl || 'alphabetic'; ctx.fillText(s, x, y);
+}
+function polyPath(p) { ctx.beginPath(); p.forEach((a, i) => i ? ctx.lineTo(a[0], a[1]) : ctx.moveTo(a[0], a[1])); ctx.closePath(); }
+const hazeK = () => S.haze.on ? 1 + 1.1 * S.haze.density : 1;
+
+function coneFill(hp, a, b, g) {
+  if (hp.length < 3) return;
+  const base = 0.035 + 0.09 * g.l.intensity / 100, k = hazeK(), c = g.col;
+  if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 2) {
+    const gr = ctx.createLinearGradient(a[0], a[1], b[0], b[1]);
+    gr.addColorStop(0, rgba(c, Math.min(0.3, base * k * 1.3))); gr.addColorStop(1, rgba(c, Math.min(0.2, base * k * 0.45)));
+    ctx.fillStyle = gr;
+  } else ctx.fillStyle = rgba(c, base * k);
+  polyPath(hp); ctx.fill();
+  ctx.strokeStyle = rgba(c, 0.35); ctx.lineWidth = 1; ctx.stroke();
+}
+function footprint(pts, ax, g) {
+  const E = lightE(g, g.axis.p, NORMALS[g.axis.surf]), a = clamp(E / 1800, 0.08, 0.85), c = g.col;
+  const rr = Math.max(4, ...pts.map(p => Math.hypot(p[0] - ax[0], p[1] - ax[1])));
+  const gr = ctx.createRadialGradient(ax[0], ax[1], 0, ax[0], ax[1], rr);
+  gr.addColorStop(0, rgba(c, a)); gr.addColorStop(0.7, rgba(c, a * 0.55)); gr.addColorStop(1, rgba(c, a * 0.08));
+  ctx.fillStyle = gr; polyPath(pts); ctx.fill();
+}
+function fixtureIcon(x, y, g, sel, n) {
+  const fl = A.flags.get(g.l.id);
+  ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fillStyle = g.l.color; ctx.fill();
+  ctx.lineWidth = sel ? 3 : 1.5; ctx.strokeStyle = sel ? '#fff' : '#000a'; ctx.stroke();
+  if (fl && fl.size) { ctx.beginPath(); ctx.arc(x, y, 12, 0, 7); ctx.strokeStyle = fl.has('glare') || fl.has('burn') ? '#ff5d6c' : '#ffcc4d'; ctx.lineWidth = 2; ctx.stroke(); }
+  txt(String(n), x, y + 3.5, { c: '#111', al: 'center', sz: 9, b: 1 });
+}
+function objShade(o, n) { return shade(o.color, pt(o.x, o.y, surfZ(o.x, o.y) + (o.lift || 0) + (o.h || 1) / 2), n); }
+const objBase = o => surfZ(o.x, o.y) + (o.lift || 0);
+const sn = (v, step) => S.ui.snap ? Math.round(v / step) * step : r2(v);
+
+/* =====================================================================
+   8. Pohled shora (2D)
+   ===================================================================== */
+const Top = {
+  g: null,
+  geom() { const R = S.room, m = 1.3, s = Math.min((W - 24) / (R.w + 2 * m), (H - 30) / (R.d + 2 * m)); return { s, ox: (W - R.w * s) / 2, oy: (H - R.d * s) / 2 }; },
+  T(x, y) { return [this.g.ox + x * this.g.s, this.g.oy + y * this.g.s]; },
+  W(px, py) { return pt((px - this.g.ox) / this.g.s, (py - this.g.oy) / this.g.s, 0); },
+  draw() {
+    const g = this.g = this.geom(), R = S.room, st = S.stage, s = g.s, T = (x, y) => this.T(x, y);
+    const x0 = st.x - st.w / 2, y0 = st.y;
+    ctx.fillStyle = '#10151f'; const [rx, ry] = T(0, 0); ctx.fillRect(rx, ry, R.w * s, R.d * s);
+    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = 1; x < R.w; x++) { ctx.moveTo(rx + x * s, ry); ctx.lineTo(rx + x * s, ry + R.d * s); }
+    for (let y = 1; y < R.d; y++) { ctx.moveTo(rx, ry + y * s); ctx.lineTo(rx + R.w * s, ry + y * s); }
+    ctx.stroke();
+    // publikum
+    const ay0 = st.y + st.d + 0.8;
+    if (ay0 < R.d - 0.3) {
+      const [ax, ay] = T(0.4, ay0); ctx.fillStyle = 'rgba(255,93,108,.06)'; ctx.fillRect(ax, ay, (R.w - 0.8) * s, (R.d - 0.3 - ay0) * s);
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,93,108,.35)'; ctx.strokeRect(ax, ay, (R.w - 0.8) * s, (R.d - 0.3 - ay0) * s); ctx.setLineDash([]);
+      txt('PUBLIKUM (zóna oslnění)', ax + 6, ay + 14, { c: 'rgba(255,120,130,.8)' });
+    }
+    // pódium
+    const [sx, sy] = T(x0, y0);
+    ctx.fillStyle = '#1d2536'; ctx.fillRect(sx, sy, st.w * s, st.d * s); ctx.strokeStyle = '#4b5878'; ctx.lineWidth = 1.5; ctx.strokeRect(sx, sy, st.w * s, st.d * s);
+    txt(`PÓDIUM ${st.w} × ${st.d} m · výška ${st.h} m`, sx + 6, sy + 14, { c: '#9aa7c4' });
+    // truss
+    const ty = trussY();
+    ctx.setLineDash([7, 4]); ctx.strokeStyle = '#98a2b8'; ctx.lineWidth = 2;
+    for (const [yy, lab] of [[ty.f, 'přední truss'], [ty.b, 'zadní truss']]) {
+      const [a, b] = [T(x0 - 0.4, yy), T(x0 + st.w + 0.4, yy)]; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      txt(`${lab} ${S.truss.h} m`, b[0] + 4, b[1] + 4, { sz: 10 });
+    }
+    ctx.setLineDash([]);
+    // otvory
+    for (const o of S.openings) {
+      let a, b; const e = o.pos + o.w;
+      if (o.wall === 'back') { a = T(o.pos, 0); b = T(e, 0); } else if (o.wall === 'front') { a = T(o.pos, R.d); b = T(e, R.d); }
+      else if (o.wall === 'left') { a = T(0, o.pos); b = T(0, e); } else { a = T(R.w, o.pos); b = T(R.w, e); }
+      ctx.strokeStyle = o.type === 'door' ? '#d99b52' : '#5aa8ff'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    }
+    ctx.strokeStyle = '#5b6783'; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, R.w * s, R.d * s);
+    txt(`${R.w} m`, rx + R.w * s / 2, ry - 6, { al: 'center' }); txt(`${R.d} m`, rx - 6, ry + R.d * s / 2, { al: 'right' });
+    txt('POZADÍ (zadní stěna)', rx + R.w * s / 2, ry + 12, { al: 'center', c: '#5b6783', sz: 10 });
+    // heatmapa
+    ensureGeom();
+    if (S.ui.heat) {
+      const cell = 0.25;
+      for (let x = 0; x < R.w; x += cell) for (let y = 0; y < R.d; y += cell) {
+        const E = totalE(pt(x + cell / 2, y + cell / 2, surfZ(x + cell / 2, y + cell / 2)), UP);
+        if (E < 1) continue; const t = clamp(Math.log10(1 + E) / Math.log10(3500), 0, 1);
+        ctx.fillStyle = `hsla(${240 - t * 240},90%,${22 + t * 33}%,.75)`; const [px, py] = T(x, y); ctx.fillRect(px, py, cell * s + 0.6, cell * s + 0.6);
+      }
+      txt('heatmapa: 0 → 3500 lx (log)', rx + 6, ry + R.d * s - 6, { sz: 10 });
+    }
+    // objekty
+    for (const o of S.objects) {
+      const sel = S.sel && S.sel.kind === 'object' && S.sel.id === o.id, [px, py] = T(o.x, o.y);
+      ctx.fillStyle = objShade(o, UP); ctx.strokeStyle = sel ? '#fff' : '#aab4cc'; ctx.lineWidth = sel ? 2.5 : 1;
+      if (o.kind === 'box') { ctx.fillRect(px - o.w * s / 2, py - o.d * s / 2, o.w * s, o.d * s); ctx.strokeRect(px - o.w * s / 2, py - o.d * s / 2, o.w * s, o.d * s); }
+      else { ctx.beginPath(); ctx.arc(px, py, Math.max(3, o.r * s), 0, 7); ctx.fill(); ctx.stroke(); }
+      txt(o.name, px, py + (o.kind === 'box' ? o.d * s / 2 : o.r * s) + 11, { al: 'center', sz: 10 });
+    }
+    // kužely + stopy
+    ctx.globalCompositeOperation = 'lighter';
+    for (const gg of G) {
+      const o = T(gg.o.x, gg.o.y), ax = T(gg.axis.p.x, gg.axis.p.y), pts = gg.rim.map(r => T(r.p.x, r.p.y));
+      if (S.ui.cones) coneFill(hull([o, ...pts]), o, ax, gg);
+      if (gg.rim.filter(r => r.surf === 'deck' || r.surf === 'floor').length >= RIM_N / 2) footprint(pts, ax, gg);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    // světla
+    for (const gg of G) {
+      const sel = S.sel && S.sel.kind === 'light' && S.sel.id === gg.l.id, [x, y] = T(gg.o.x, gg.o.y), ax = T(gg.axis.p.x, gg.axis.p.y);
+      ctx.strokeStyle = rgba(gg.col, 0.9); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ax[0], ax[1]); ctx.stroke();
+      if (sel) { ctx.save(); ctx.translate(ax[0], ax[1]); ctx.rotate(Math.PI / 4); ctx.fillStyle = '#fff'; ctx.fillRect(-5, -5, 10, 10); ctx.restore(); }
+      fixtureIcon(x, y, gg, sel, gg.l.n);
+    }
+    txt('▼ směr k publiku', rx + R.w * s - 6, ry + R.d * s + 18, { al: 'right', sz: 10 });
+  },
+  down(px, py) {
+    const sel = selEnt();
+    if (S.sel && S.sel.kind === 'light' && sel) {
+      const gg = G.find(q => q.l.id === sel.id);
+      if (gg) { const [ax, ay] = this.T(gg.axis.p.x, gg.axis.p.y); if (Math.hypot(ax - px, ay - py) < 11) return { t: 'aim', l: sel, z: gg.axis.p.z }; }
+    }
+    let best = null, bd = 13;
+    for (const gg of G) { const [x, y] = this.T(gg.o.x, gg.o.y), d = Math.hypot(x - px, y - py); if (d < bd) { bd = d; best = gg.l; } }
+    if (best) { select('light', best.id); return { t: 'light', e: best }; }
+    const w = this.W(px, py);
+    for (let i = S.objects.length - 1; i >= 0; i--) {
+      const o = S.objects[i], hit = o.kind === 'box' ? Math.abs(w.x - o.x) <= o.w / 2 && Math.abs(w.y - o.y) <= o.d / 2 : Math.hypot(w.x - o.x, w.y - o.y) <= Math.max(o.r, 0.25);
+      if (hit) { select('object', o.id); return { t: 'obj', e: o, dx: o.x - w.x, dy: o.y - w.y }; }
+    }
+    select(null); return null;
+  },
+  move(d, px, py) {
+    const w = this.W(px, py);
+    if (d.t === 'light') { d.e.x = sn(w.x, 0.25); d.e.y = sn(w.y, 0.25); }
+    else if (d.t === 'obj') { d.e.x = sn(w.x + d.dx, 0.25); d.e.y = sn(w.y + d.dy, 0.25); }
+    else if (d.t === 'aim') aimAt(d.l, pt(w.x, w.y, d.z));
+  },
+};
+
+/* =====================================================================
+   9. Boční / čelní pohled (elevace)
+   ===================================================================== */
+function makeElev(ax) {
+  const hc = p => ax === 'x' ? p.x : p.y;
+  const V = {
+    g: null,
+    geom() {
+      const R = S.room, e = ax === 'x' ? R.w : R.d, L = 56, Rr = 24, T = 26, B = 46;
+      const s = Math.min((W - L - Rr) / e, (H - T - B) / R.h);
+      return { s, ox: L + ((W - L - Rr) - e * s) / 2, by: T + ((H - T - B) - R.h * s) / 2 + R.h * s, e };
+    },
+    S(h, z) { return [this.g.ox + h * this.g.s, this.g.by - z * this.g.s]; },
+    inv(px, py) { return { h: (px - this.g.ox) / this.g.s, z: (this.g.by - py) / this.g.s }; },
+    draw() {
+      const g = this.g = this.geom(), R = S.room, st = S.stage, s = g.s, P = (h, z) => this.S(h, z);
+      const sh0 = ax === 'x' ? st.x - st.w / 2 : st.y, sh1 = ax === 'x' ? st.x + st.w / 2 : st.y + st.d;
+      const [rx, ry] = P(0, R.h), [rx2, ry2] = P(g.e, 0);
+      ctx.fillStyle = '#10151f'; ctx.fillRect(rx, ry, rx2 - rx, ry2 - ry);
+      // osy a mřížka
+      ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let h = 1; h < g.e; h++) { ctx.moveTo(rx + h * s, ry); ctx.lineTo(rx + h * s, ry2); }
+      for (let z = 1; z < R.h; z++) { ctx.moveTo(rx, ry2 - z * s); ctx.lineTo(rx2, ry2 - z * s); }
+      ctx.stroke();
+      for (let h = 0; h <= g.e; h++) { const [x, y] = P(h, 0); ctx.strokeStyle = '#5b6783'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 4); ctx.stroke(); if (h % 2 === 0) txt(String(h), x, y + 16, { al: 'center', sz: 10 }); }
+      for (let z = 0; z <= R.h; z++) { const [x, y] = P(0, z); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4, y); ctx.stroke(); txt(String(z), x - 8, y + 3, { al: 'right', sz: 10 }); }
+      txt('m', rx2 + 4, ry2 + 16, { sz: 10 }); txt('výška [m]', rx - 50, ry - 10, { sz: 10 });
+      txt(ax === 'x' ? 'ČELNÍ POHLED (X–Z) – pohled z publika na pódium' : 'BOČNÍ POHLED (Y–Z) – pozadí vlevo, publikum vpravo', rx + 8, ry + 14, { c: '#9aa7c4', sz: 11 });
+      // publikum (boční pohled)
+      if (ax === 'y') {
+        const a0 = st.y + st.d + 0.8, a1 = R.d - 0.3;
+        if (a0 < a1) {
+          const [x1, y1] = P(a0, 0), [x2] = P(a1, 0), [, ye] = P(0, S.aud.eye);
+          ctx.fillStyle = 'rgba(255,93,108,.08)'; ctx.fillRect(x1, ye - 20, x2 - x1, y1 - ye + 20);
+          ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,93,108,.6)'; ctx.beginPath(); ctx.moveTo(x1, ye); ctx.lineTo(x2, ye); ctx.stroke(); ctx.setLineDash([]);
+          for (let y = a0 + 0.5; y < a1; y += 1.2) { const [hx] = P(y, 0); ctx.beginPath(); ctx.arc(hx, ye, Math.max(2, 0.11 * s), 0, 7); ctx.fillStyle = 'rgba(255,150,160,.85)'; ctx.fill(); }
+          txt(`oči diváků ${S.aud.eye} m`, x1 + 4, ye - 6, { c: 'rgba(255,120,130,.9)', sz: 10 });
+        }
+      }
+      // pódium
+      const [dx, dy] = P(sh0, st.h), [dx2, dy2] = P(sh1, 0);
+      ctx.fillStyle = '#232c3d'; ctx.fillRect(dx, dy, dx2 - dx, dy2 - dy); ctx.strokeStyle = '#4b5878'; ctx.strokeRect(dx, dy, dx2 - dx, dy2 - dy);
+      // truss
+      const ty = trussY();
+      ctx.strokeStyle = '#98a2b8'; ctx.lineWidth = 2.5;
+      if (ax === 'x') { const [a, y] = P(sh0 - 0.4, S.truss.h), [b] = P(sh1 + 0.4, S.truss.h); ctx.beginPath(); ctx.moveTo(a, y); ctx.lineTo(b, y); ctx.stroke(); txt(`truss ${S.truss.h} m`, b + 6, y + 4, { sz: 10 }); ctx.lineWidth = 1.5; for (const q of [a, b]) { ctx.beginPath(); ctx.moveTo(q, y); ctx.lineTo(q, P(0, 0)[1]); ctx.stroke(); } }
+      else {
+        for (const [yy, lab] of [[ty.b, 'zadní'], [ty.f, 'přední']]) { const [x, y] = P(yy, S.truss.h); ctx.strokeRect(x - 6, y - 6, 12, 12); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, P(0, 0)[1]); ctx.stroke(); ctx.lineWidth = 2.5; txt(lab + ' truss', x, y - 12, { al: 'center', sz: 10 }); }
+        const [a, y] = P(ty.b, S.truss.h), [b] = P(ty.f, S.truss.h); ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(a + 6, y); ctx.lineTo(b - 6, y); ctx.stroke(); ctx.setLineDash([]);
+        txt(`${S.truss.h} m`, b + 12, y + 4, { sz: 10 });
+      }
+      ensureGeom();
+      // objekty a herec (silueta)
+      for (const o of S.objects) {
+        const sel = S.sel && S.sel.kind === 'object' && S.sel.id === o.id, hw = (o.kind === 'box' ? (ax === 'x' ? o.w : o.d) / 2 : o.r), b = objBase(o), h0 = hc(o);
+        const [ox, oy] = P(h0 - hw, b + o.h), fill = shade(o.color, pt(o.x, o.y, b + o.h / 2), ax === 'x' ? pt(0, 1, 0) : pt(1, 0, 0));
+        ctx.fillStyle = fill; ctx.strokeStyle = sel ? '#fff' : '#aab4cc'; ctx.lineWidth = sel ? 2.5 : 1;
+        if (o.kind === 'box') { ctx.fillRect(ox, oy, hw * 2 * s, o.h * s); ctx.strokeRect(ox, oy, hw * 2 * s, o.h * s); }
+        else {
+          ctx.beginPath(); ctx.roundRect(ox, oy, hw * 2 * s, o.h * s, o.head ? hw * s : 3); ctx.fill(); ctx.stroke();
+          if (o.head) { const [hx, hy] = P(h0, b + o.h + 0.12); ctx.beginPath(); ctx.arc(hx, hy, 0.12 * s, 0, 7); ctx.fill(); ctx.stroke(); }
+        }
+        txt(o.name, ox + hw * s, oy - (o.head ? 0.3 * s : 5), { al: 'center', sz: 10 });
+      }
+      if (S.haze.on) { ctx.fillStyle = `rgba(170,190,230,${0.03 + 0.07 * S.haze.density})`; ctx.fillRect(rx, ry, rx2 - rx, ry2 - ry); }
+      // kužely
+      ctx.globalCompositeOperation = 'lighter';
+      for (const gg of G) {
+        const o = P(hc(gg.o), gg.o.z), axp = P(hc(gg.axis.p), gg.axis.p.z), pts = gg.rim.map(r => P(hc(r.p), r.p.z));
+        if (S.ui.cones) {
+          coneFill(hull([o, ...pts]), o, axp, gg);
+          if (S.haze.on) { ctx.strokeStyle = rgba(gg.col, 0.55); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(axp[0], axp[1]); ctx.stroke(); }
+        }
+        const fl = gg.rim.filter(r => r.surf === 'deck' || r.surf === 'floor');
+        if (fl.length >= RIM_N / 3 && (gg.axis.surf === 'deck' || gg.axis.surf === 'floor')) {
+          const hs = fl.map(r => hc(r.p)), rxm = Math.max(0.15, (Math.max(...hs) - Math.min(...hs)) / 2) * s, E = lightE(gg, gg.axis.p, UP), a = clamp(E / 1800, 0.1, 0.9);
+          ctx.save(); ctx.translate(axp[0], axp[1]); ctx.scale(1, 0.16); const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, rxm);
+          gr.addColorStop(0, rgba(gg.col, a)); gr.addColorStop(1, rgba(gg.col, 0)); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, rxm, 0, 7); ctx.fill(); ctx.restore();
+        }
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      // světla
+      for (const gg of G) {
+        const sel = S.sel && S.sel.kind === 'light' && S.sel.id === gg.l.id, [x, y] = P(hc(gg.o), gg.o.z);
+        const ang = Math.atan2(-(gg.d.z), ax === 'x' ? gg.d.x : gg.d.y);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = '#2a3144'; ctx.strokeStyle = sel ? '#fff' : '#aab4cc'; ctx.lineWidth = sel ? 2.5 : 1; ctx.fillRect(-9, -5, 14, 10); ctx.strokeRect(-9, -5, 14, 10);
+        ctx.fillStyle = gg.l.color; ctx.fillRect(5, -4, 4, 8); ctx.restore();
+        const fl = A.flags.get(gg.l.id); if (fl && fl.size) { ctx.beginPath(); ctx.arc(x, y, 13, 0, 7); ctx.strokeStyle = fl.has('glare') || fl.has('burn') ? '#ff5d6c' : '#ffcc4d'; ctx.lineWidth = 2; ctx.stroke(); }
+        txt(String(gg.l.n), x, y - 12, { al: 'center', sz: 10, c: '#dfe5f2' });
+      }
+      ctx.strokeStyle = '#5b6783'; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rx2 - rx, ry2 - ry);
+    },
+    down(px, py) {
+      let best = null, bd = 14;
+      for (const gg of G) { const [x, y] = this.S(hc(gg.o), gg.o.z), d = Math.hypot(x - px, y - py); if (d < bd) { bd = d; best = gg.l; } }
+      if (best) { select('light', best.id); return { t: 'light', e: best }; }
+      const w = this.inv(px, py);
+      for (let i = S.objects.length - 1; i >= 0; i--) {
+        const o = S.objects[i], hw = o.kind === 'box' ? (ax === 'x' ? o.w : o.d) / 2 : Math.max(o.r, 0.2), b = objBase(o);
+        if (Math.abs(w.h - hc(o)) <= hw && w.z >= b && w.z <= b + o.h) { select('object', o.id); return { t: 'obj', e: o, off: hc(o) - w.h }; }
+      }
+      select(null); return null;
+    },
+    move(d, px, py) {
+      const w = this.inv(px, py);
+      if (d.t === 'light') { d.e[ax] = sn(w.h, 0.25); d.e.z = clamp(sn(w.z, 0.1), 0, S.room.h); }
+      else if (d.t === 'obj') d.e[ax] = sn(w.h + d.off, 0.25);
+    },
+  };
+  return V;
+}
+
+/* =====================================================================
+   10. 3D perspektiva (vlastní projekce na Canvas)
+   ===================================================================== */
+const Cam = { yaw: 28, pitch: 24, dist: 28, tx: 8, ty: 5, tz: 1.5 };
+let cam = null;
+function camSetup() {
+  const yw = rad(Cam.yaw), pt_ = rad(Cam.pitch), T = pt(Cam.tx, Cam.ty, Cam.tz);
+  const pos = pt(T.x + Cam.dist * Math.sin(yw) * Math.cos(pt_), T.y + Cam.dist * Math.cos(yw) * Math.cos(pt_), T.z + Cam.dist * Math.sin(pt_));
+  const f = v3.norm(v3.sub(T, pos)), r = v3.norm(v3.cross(f, pt(0, 0, 1))), u = v3.cross(r, f);
+  cam = { pos, f, r, u, focal: H / (2 * Math.tan(rad(26))) };
+}
+function P3(p) {
+  const v = v3.sub(p, cam.pos), zc = v3.dot(v, cam.f);
+  if (zc < 0.3) return null;
+  return [W / 2 + cam.focal * v3.dot(v, cam.r) / zc, H / 2 - cam.focal * v3.dot(v, cam.u) / zc, zc];
+}
+function poly3(pts, fill, stroke, lw = 1) {
+  const q = pts.map(P3); if (q.some(a => !a)) return false;
+  polyPath(q); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); } return true;
+}
+function line3(a, b, col, lw = 1) {
+  const p = P3(a), q = P3(b); if (!p || !q) return;
+  ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+}
+function camPreset(v) {
+  const R = S.room, st = S.stage;
+  Cam.tx = R.w / 2; Cam.ty = R.d * 0.38; Cam.tz = 1.8; Cam.dist = Math.max(R.w, R.d) * 1.5;
+  const m = { front: [0, 8], side: [90, 8], top: [0, 89], persp: [28, 24] }[v] || [28, 24];
+  Cam.yaw = m[0]; Cam.pitch = m[1];
+  if (v === 'side') { Cam.tx = R.w / 2; } Cam.ty = v === 'top' ? R.d / 2 : st.y + st.d / 2 + 2;
+}
+
+const View3D = {
+  draw() {
+    camSetup(); ensureGeom();
+    const R = S.room, st = S.stage, x0 = st.x - st.w / 2, x1 = st.x + st.w / 2, y0 = st.y, y1 = st.y + st.d;
+    const C = (x, y, z) => pt(x, y, z);
+    // podlaha, stěny
+    poly3([C(0, 0, 0), C(R.w, 0, 0), C(R.w, R.d, 0), C(0, R.d, 0)], '#10151f', '#3b455c', 1.5);
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.05)';
+    for (let x = 1; x < R.w; x++) line3(C(x, 0, 0), C(x, R.d, 0), 'rgba(255,255,255,.05)');
+    for (let y = 1; y < R.d; y++) line3(C(0, y, 0), C(R.w, y, 0), 'rgba(255,255,255,.05)');
+    const a0 = y1 + 0.8; if (a0 < R.d - 0.3) poly3([C(0.4, a0, 0.01), C(R.w - 0.4, a0, 0.01), C(R.w - 0.4, R.d - 0.3, 0.01), C(0.4, R.d - 0.3, 0.01)], 'rgba(255,93,108,.07)', 'rgba(255,93,108,.35)');
+    poly3([C(0, 0, 0), C(R.w, 0, 0), C(R.w, 0, R.h), C(0, 0, R.h)], 'rgba(36,44,64,.55)', '#3b455c', 1.5);
+    poly3([C(0, 0, 0), C(0, R.d, 0), C(0, R.d, R.h), C(0, 0, R.h)], 'rgba(30,38,56,.35)', '#3b455c', 1.5);
+    poly3([C(R.w, 0, 0), C(R.w, R.d, 0), C(R.w, R.d, R.h), C(R.w, 0, R.h)], 'rgba(30,38,56,.35)', '#3b455c', 1.5);
+    line3(C(0, R.d, 0), C(0, R.d, R.h), '#3b455c', 1.5); line3(C(R.w, R.d, 0), C(R.w, R.d, R.h), '#3b455c', 1.5);
+    for (const [a, b] of [[C(0, 0, R.h), C(R.w, 0, R.h)], [C(0, R.d, R.h), C(R.w, R.d, R.h)], [C(0, 0, R.h), C(0, R.d, R.h)], [C(R.w, 0, R.h), C(R.w, R.d, R.h)], [C(0, R.d, 0), C(R.w, R.d, 0)]]) line3(a, b, '#3b455c', 1);
+    // dveře a okna
+    for (const o of S.openings) {
+      const e = o.pos + o.w, z0 = o.sill, z1 = o.sill + o.h; let q;
+      if (o.wall === 'back') q = [C(o.pos, 0, z0), C(e, 0, z0), C(e, 0, z1), C(o.pos, 0, z1)];
+      else if (o.wall === 'front') q = [C(o.pos, R.d, z0), C(e, R.d, z0), C(e, R.d, z1), C(o.pos, R.d, z1)];
+      else if (o.wall === 'left') q = [C(0, o.pos, z0), C(0, e, z0), C(0, e, z1), C(0, o.pos, z1)];
+      else q = [C(R.w, o.pos, z0), C(R.w, e, z0), C(R.w, e, z1), C(R.w, o.pos, z1)];
+      poly3(q, o.type === 'door' ? 'rgba(217,155,82,.35)' : 'rgba(90,168,255,.3)', o.type === 'door' ? '#d99b52' : '#5aa8ff', 2);
+    }
+    // pódium
+    const dk = (x, y, z) => C(x, y, z);
+    poly3([dk(x0, y0, 0), dk(x1, y0, 0), dk(x1, y0, st.h), dk(x0, y0, st.h)], '#171e2c', '#4b5878');
+    poly3([dk(x0, y1, 0), dk(x1, y1, 0), dk(x1, y1, st.h), dk(x0, y1, st.h)], '#1a2231', '#4b5878');
+    poly3([dk(x0, y0, 0), dk(x0, y1, 0), dk(x0, y1, st.h), dk(x0, y0, st.h)], '#141b28', '#4b5878');
+    poly3([dk(x1, y0, 0), dk(x1, y1, 0), dk(x1, y1, st.h), dk(x1, y0, st.h)], '#141b28', '#4b5878');
+    poly3([dk(x0, y0, st.h), dk(x1, y0, st.h), dk(x1, y1, st.h), dk(x0, y1, st.h)], '#222b3d', '#6a7799', 1.5);
+    // stopy světel na plochách
+    ctx.globalCompositeOperation = 'lighter';
+    for (const g of G) {
+      const q = g.rim.map(r => P3(r.p)), ax = P3(g.axis.p);
+      if (!ax || q.some(a => !a) || g.rim.filter(r => r.surf !== 'none').length < RIM_N / 2) continue;
+      footprint(q, ax, g);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    // truss
+    const ty = trussY(), tz = S.truss.h, a = x0 - 0.4, b = x1 + 0.4;
+    const corners = [C(a, ty.b, tz), C(b, ty.b, tz), C(b, ty.f, tz), C(a, ty.f, tz)];
+    for (const c of corners) line3(c, C(c.x, c.y, 0), '#6c768c', 2);
+    for (let i = 0; i < 4; i++) line3(corners[i], corners[(i + 1) % 4], '#aab3c6', 3);
+    txt(`TRUSS ${tz} m`, ...P3(C(b, ty.f, tz)).slice(0, 2).map((v, i) => i ? v - 8 : v + 6), { sz: 10 });
+    // objekty (řazení podle hloubky)
+    const items = [];
+    for (const o of S.objects) { const p = P3(C(o.x, o.y, objBase(o) + o.h / 2)); if (p) items.push({ z: p[2], o }); }
+    items.sort((p, q) => q.z - p.z);
+    for (const it of items) this.obj(it.o);
+    // paprsky
+    this.beams();
+    // svítidla
+    for (const g of G) {
+      const sel = S.sel && S.sel.kind === 'light' && S.sel.id === g.l.id, p = P3(g.o); if (!p) continue;
+      const back = P3(pt(g.o.x - g.d.x * 0.4, g.o.y - g.d.y * 0.4, g.o.z - g.d.z * 0.4));
+      if (back) { ctx.strokeStyle = '#2d3548'; ctx.lineWidth = Math.max(3, cam.focal * 0.2 / p[2]); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(back[0], back[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); ctx.lineCap = 'butt'; }
+      const rr = Math.max(4, cam.focal * 0.12 / p[2]);
+      ctx.beginPath(); ctx.arc(p[0], p[1], rr, 0, 7); ctx.fillStyle = g.l.color; ctx.fill(); ctx.lineWidth = sel ? 3 : 1.5; ctx.strokeStyle = sel ? '#fff' : '#000a'; ctx.stroke();
+      const fl = A.flags.get(g.l.id); if (fl && fl.size) { ctx.beginPath(); ctx.arc(p[0], p[1], rr + 4, 0, 7); ctx.strokeStyle = fl.has('glare') || fl.has('burn') ? '#ff5d6c' : '#ffcc4d'; ctx.lineWidth = 2; ctx.stroke(); }
+      txt(String(g.l.n), p[0], p[1] - rr - 4, { al: 'center', sz: 10, c: '#dfe5f2' });
+    }
+    // haze závoj
+    if (S.haze.on) { const gr = ctx.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(150,170,220,0)'); gr.addColorStop(1, `rgba(150,170,220,${0.04 + 0.07 * S.haze.density})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); }
+  },
+  beams() {
+    ctx.globalCompositeOperation = 'lighter';
+    for (const g of G) {
+      const o = P3(g.o); if (!o) continue;
+      const q = g.rim.map(r => P3(r.p)).filter(Boolean), ax = P3(g.axis.p) || o;
+      if (q.length < 6) continue;
+      if (S.ui.cones) coneFill(hull([o, ...q]), o, ax, g);
+      if (S.haze.on && S.ui.cones) {
+        ctx.strokeStyle = rgba(g.col, 0.5 * Math.min(1, g.l.intensity / 80)); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(ax[0], ax[1]); ctx.stroke();
+        ctx.lineWidth = 1; ctx.strokeStyle = rgba(g.col, 0.22);
+        for (let k = 0; k < q.length; k += 4) { ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(q[k][0], q[k][1]); ctx.stroke(); }
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  },
+  obj(o) {
+    const b = objBase(o), sel = S.sel && S.sel.kind === 'object' && S.sel.id === o.id, st = sel ? '#fff' : '#9aa7c4', lw = sel ? 2.5 : 1;
+    const vis = (n, c) => v3.dot(n, v3.sub(cam.pos, c)) > 0;
+    if (o.kind === 'box') {
+      const xa = o.x - o.w / 2, xb = o.x + o.w / 2, ya = o.y - o.d / 2, yb = o.y + o.d / 2, za = b, zb = b + o.h;
+      const faces = [
+        [pt(0, 1, 0), [pt(xa, yb, za), pt(xb, yb, za), pt(xb, yb, zb), pt(xa, yb, zb)]],
+        [pt(0, -1, 0), [pt(xa, ya, za), pt(xb, ya, za), pt(xb, ya, zb), pt(xa, ya, zb)]],
+        [pt(-1, 0, 0), [pt(xa, ya, za), pt(xa, yb, za), pt(xa, yb, zb), pt(xa, ya, zb)]],
+        [pt(1, 0, 0), [pt(xb, ya, za), pt(xb, yb, za), pt(xb, yb, zb), pt(xb, ya, zb)]],
+        [pt(0, 0, 1), [pt(xa, ya, zb), pt(xb, ya, zb), pt(xb, yb, zb), pt(xa, yb, zb)]],
+      ];
+      for (const [n, q] of faces) {
+        const c = pt((q[0].x + q[2].x) / 2, (q[0].y + q[2].y) / 2, (q[0].z + q[2].z) / 2);
+        if (vis(n, c)) poly3(q, shade(o.color, c, n), st, lw);
+      }
+    } else {
+      const N = 16;
+      for (let i = 0; i < N; i++) {
+        const a1 = i / N * 6.2832, a2 = (i + 1) / N * 6.2832, am = (a1 + a2) / 2, n = pt(Math.cos(am), Math.sin(am), 0);
+        const q = [pt(o.x + Math.cos(a1) * o.r, o.y + Math.sin(a1) * o.r, b), pt(o.x + Math.cos(a2) * o.r, o.y + Math.sin(a2) * o.r, b), pt(o.x + Math.cos(a2) * o.r, o.y + Math.sin(a2) * o.r, b + o.h), pt(o.x + Math.cos(a1) * o.r, o.y + Math.sin(a1) * o.r, b + o.h)];
+        const c = pt(o.x + n.x * o.r, o.y + n.y * o.r, b + o.h / 2);
+        if (vis(n, c)) poly3(q, shade(o.color, c, n), sel ? '#fff' : null, lw);
+      }
+      const top = []; for (let i = 0; i < N; i++) { const a1 = i / N * 6.2832; top.push(pt(o.x + Math.cos(a1) * o.r, o.y + Math.sin(a1) * o.r, b + o.h)); }
+      if (cam.pos.z > b + o.h) poly3(top, shade(o.color, pt(o.x, o.y, b + o.h), UP), st, lw);
+      if (o.head) {
+        const hp = pt(o.x, o.y, b + o.h + 0.12), p = P3(hp);
+        if (p) { const toCam = v3.norm(v3.sub(cam.pos, hp)); ctx.beginPath(); ctx.arc(p[0], p[1], cam.focal * 0.12 / p[2], 0, 7); ctx.fillStyle = shade(o.color, hp, toCam); ctx.fill(); ctx.strokeStyle = st; ctx.lineWidth = lw; ctx.stroke(); }
+      }
+    }
+    const lp = P3(pt(o.x, o.y, b + o.h + (o.head ? 0.35 : 0.15))); if (lp) txt(o.name, lp[0], lp[1], { al: 'center', sz: 10 });
+  },
+  down(px, py, ev) { this.moved = false; this.sx = px; this.sy = py; this.sy0 = Cam.pitch; this.sx0 = Cam.yaw; return { t: 'cam' }; },
+  move(d, px, py) {
+    if (Math.hypot(px - this.sx, py - this.sy) > 4) this.moved = true;
+    Cam.yaw = this.sx0 - (px - this.sx) * 0.4; Cam.pitch = clamp(this.sy0 + (py - this.sy) * 0.3, 2, 89);
+  },
+  up(px, py) {
+    if (this.moved) return;
+    let best = null, bd = 18;
+    for (const g of G) { const p = P3(g.o); if (p) { const d = Math.hypot(p[0] - px, p[1] - py); if (d < bd) { bd = d; best = g.l; } } }
+    select(best ? 'light' : null, best && best.id);
+  },
+};
+
+const VIEWS = { top: Top, front: makeElev('x'), side: makeElev('y'), '3d': View3D };
+const HINTS = {
+  top: 'Přetáhněte světlo myší (lze i mimo pódium). Kosočtverec = zaměřovač (kam svítí). Kliknutím vyberete světlo/objekt, Delete ho smaže.',
+  front: 'Čelní pohled: přetahováním měníte pozici X a výšku Z světla. Čárkované červené = zóna očí publika.',
+  side: 'Boční pohled: přetahováním měníte pozici Y a výšku Z. Publikum je vpravo, oči diváků jsou červená čára.',
+  '3d': 'Tažením myší otáčíte kameru, kolečkem zoomujete, kliknutím na světlo ho vyberete. Haze zobrazí volumetrické kužely.',
+};
+
+/* =====================================================================
+   11. Render smyčka a interakce s plátnem
+   ===================================================================== */
+let raf = 0;
+function requestRender() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+function render() {
+  ensureGeom();
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#0b0e14'; ctx.fillRect(0, 0, W, H);
+  VIEWS[S.ui.view].draw();
+}
+let drag = null;
+const lp = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId); ensureGeom();
+  const [x, y] = lp(e); drag = VIEWS[S.ui.view].down(x, y, e);
+});
+cv.addEventListener('pointermove', e => {
+  if (!drag) return; const [x, y] = lp(e);
+  VIEWS[S.ui.view].move(drag, x, y);
+  if (drag.t === 'cam') requestRender(); else { touch(); syncInspector(); }
+});
+const endDrag = e => { if (!drag) return; const v = VIEWS[S.ui.view]; if (v.up) { const [x, y] = lp(e); v.up(x, y); } drag = null; };
+cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', () => { drag = null; });
+cv.addEventListener('wheel', e => { if (S.ui.view !== '3d') return; e.preventDefault(); Cam.dist = clamp(Cam.dist * (1 + e.deltaY * 0.001), 6, 90); requestRender(); }, { passive: false });
+new ResizeObserver(() => { resize(); requestRender(); }).observe(cv);
+
+/* =====================================================================
+   12. UI – panely, inspektor, analýza
+   ===================================================================== */
+const panelEl = $('#panel'), inspEl = $('#inspector'), anaEl = $('#analysis');
+function resolve(b) {
+  if (b[0] === '@') { const e = selEnt(); return e ? { obj: e, key: b.slice(1) } : null; }
+  const ks = b.split('.'), key = ks.pop(), obj = ks.reduce((a, k) => a && a[k], S);
+  return obj ? { obj, key } : null;
+}
+function fld(label, bind, min, max, step, o = {}) {
+  const r = resolve(bind), v = r ? r2(r.obj[r.key]) : '';
+  const a = `data-bind="${bind}" min="${min}" max="${max}" step="${step}" value="${v}"`;
+  if (o.noSlider || min === max) return `<label class="f n"><span>${label}</span><input type="number" ${a}></label>`;
+  return `<label class="f"><span>${label}</span><input type="range" ${a}><input type="number" ${a}></label>`;
+}
+const chk = (label, bind) => { const r = resolve(bind); return `<label class="tog" style="margin:4px 0"><input type="checkbox" data-bind="${bind}" ${r && r.obj[r.key] ? 'checked' : ''}> ${label}</label>`; };
+const sel = (bind, opts) => { const r = resolve(bind); return `<select data-bind="${bind}">${Object.entries(opts).map(([k, v]) => `<option value="${k}" ${r && r.obj[r.key] === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`; };
+
+function panelScene() {
+  const R = S.room;
+  let h = `<h3>Místnost</h3>${fld('Šířka X (m)', 'room.w', 6, 60, 0.5)}${fld('Hloubka Y (m)', 'room.d', 6, 60, 0.5)}${fld('Výška (m)', 'room.h', 3, 20, 0.1)}
+  <h3>Pódium</h3>${fld('Šířka (m)', 'stage.w', 2, 40, 0.5)}${fld('Hloubka (m)', 'stage.d', 2, 30, 0.5)}${fld('Výška (m)', 'stage.h', 0, 3, 0.05)}
+  ${fld('Střed X (m)', 'stage.x', 0, R.w, 0.25)}${fld('Od zadní stěny', 'stage.y', 0, R.d, 0.25)}
+  <h3>Truss</h3>${fld('Výška trussu', 'truss.h', 2, R.h, 0.1)}${fld('Přední – odstup', 'truss.frontInset', 0, 3, 0.1)}${fld('Zadní – odstup', 'truss.backInset', 0, 3, 0.1)}
+  <h3>Publikum a haze</h3>${fld('Výška očí (m)', 'aud.eye', 0.8, 2, 0.1)}${chk('Haze zapnuto', 'haze.on')}${fld('Hustota haze', 'haze.density', 0, 1, 0.05)}
+  <h3>Dveře a okna</h3>`;
+  S.openings.forEach((o, i) => {
+    h += `<div class="item" style="cursor:default;flex-wrap:wrap"><b style="width:100%;display:flex;justify-content:space-between">${o.type === 'door' ? '🚪 Dveře' : '🪟 Okno'} <button class="btn sm danger" data-act="delOpening" data-i="${i}">✕</button></b>
+    <div style="width:100%">${sel(`openings.${i}.wall`, { back: 'Zadní stěna', front: 'Přední stěna', left: 'Levá stěna', right: 'Pravá stěna' })}</div>
+    <div style="width:100%">${fld('Pozice (m)', `openings.${i}.pos`, 0, 60, 0.1, { noSlider: 1 })}${fld('Šířka (m)', `openings.${i}.w`, 0.4, 10, 0.1, { noSlider: 1 })}${fld('Výška (m)', `openings.${i}.h`, 0.4, 6, 0.1, { noSlider: 1 })}${fld('Parapet (m)', `openings.${i}.sill`, 0, 4, 0.1, { noSlider: 1 })}</div></div>`;
+  });
+  return h + `<div class="row"><button class="btn" data-act="addOpening" data-t="door">+ Dveře</button><button class="btn" data-act="addOpening" data-t="window">+ Okno</button></div>`;
+}
+function panelModes() {
+  const m = (k, t, d) => `<button class="btn mode" data-act="preset" data-p="${k}"><b>${t}</b><small>${d}</small></button>`;
+  return `<button class="btn pri mode" data-act="preset" data-p="full"><b>⭐ Doporučené rozmístění</b><small style="color:#3a2a0a">Trojbodové + pozadí + side + kontra + haze: maximální hloubka a kontrast při bezpečných úhlech.</small></button>
+  ${chk('Nahradit stávající světla (jinak se přidá)', 'ui.replace')}
+  <h3>Jednotlivé režimy</h3>
+  ${m('three', 'Trojbodové svícení', 'Key (profil) + fill (wash) zepředu pod ~45° a dva backlighty ze zadního trussu.')}
+  ${m('back', 'Backlight', 'Řada PARů ze zadního trussu – oddělí herce od pozadí, svítí svisle dolů na pódium.')}
+  ${m('side', 'Side light', 'Boční světla z výšky 2,2 m přes pódium (teplá / studená) – tvar těla.')}
+  ${m('counter', 'Kontra', 'Úzké beamy ze zadního trussu křížem přes pódium; bezpečný tilt, zapne haze.')}
+  ${m('bg', 'Nasvícení pozadí', 'Wash ze zadního trussu na zadní stěnu místnosti.')}
+  ${m('haze', 'Haze', 'Zapne haze a přidá vějíř beamů nad pódiem, aby byly paprsky vidět.')}
+  <h3>Poznámka</h3><p class="mut">Hodnoty osvětlenosti jsou orientační (odvozené z příkonu a technologie zdroje). Zkontrolujte reálné fotometrické údaje svítidel před ostrým nasazením.</p>`;
+}
+function panelLib() {
+  const q = (panelLib.q || '').toLowerCase(), tf = panelLib.t || '';
+  let h = `<div class="row"><input type="text" id="libq" placeholder="Hledat…" value="${esc(panelLib.q || '')}" style="flex:1"><select id="libt" style="width:100px"><option value="">Vše</option>${TYPES.map(t => `<option ${tf === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div><div id="libList">`;
+  for (const lb of allLib()) {
+    if (q && !lb.name.toLowerCase().includes(q)) continue; if (tf && lb.type !== tf) continue;
+    const u = usedOf(lb.id);
+    h += `<div class="item" style="cursor:default"><div class="nm"><b title="${esc(lb.name)}">${esc(lb.name)}</b><small><span class="chip">${lb.type}</span> ${lb.watt} W · ${lb.min === lb.max ? lb.angle : lb.min + '–' + lb.max}° · <span class="${u > lb.stock ? 'chip bad' : ''}">použito ${u} / ${lb.stock} ks</span></small></div>
+      <input type="number" class="qty" value="1" min="1" max="40"><button class="btn sm pri" data-act="addlib" data-id="${lb.id}">+</button></div>`;
+  }
+  h += `</div><details><summary>Vlastní světlo / import knihovny</summary>
+    <div class="f n"><span>Název</span><input type="text" id="cn" placeholder="např. Chauvet Rogue"></div>
+    <div class="f n"><span>Typ</span><select id="ct">${TYPES.map(t => `<option>${t}</option>`).join('')}</select></div>
+    <div class="f n"><span>Příkon (W)</span><input type="number" id="cw" value="200"></div>
+    <div class="f n"><span>Úhel min/def/max</span><div class="row" style="margin:0"><input type="number" id="cmin" value="10" class="qty"><input type="number" id="cang" value="25" class="qty"><input type="number" id="cmax" value="45" class="qty"></div></div>
+    <div class="f n"><span>Počet ks</span><input type="number" id="cs" value="4"></div>
+    <div class="f n"><span>Technologie</span><select id="cte"><option value="led">LED</option><option value="tungsten">Žárovka</option><option value="discharge">Výbojka</option></select></div>
+    <button class="btn" data-act="addCustom">Přidat do knihovny</button>
+    <p class="mut" style="margin-top:10px">Import JSON (pole objektů):<br><code>[{"name":"…","type":"PAR","watt":150,"angle":25,"min":15,"max":40,"stock":6,"tech":"led"}]</code></p>
+    <textarea id="libjson" rows="4"></textarea><button class="btn" data-act="importLib" style="margin-top:4px">Importovat JSON</button></details>`;
+  return h;
+}
+function panelLights() {
+  if (!S.lights.length) return '<p class="mut">Žádná světla. Přidejte je z Knihovny nebo použijte záložku Režimy.</p>';
+  let h = `<div class="row"><b>${S.lights.length} světel</b><span class="spacer"></span><button class="btn sm danger" data-act="delAll">Smazat všechna</button></div>`;
+  for (const l of S.lights) {
+    const fl = A.flags.get(l.id), lb = libOf(l);
+    h += `<div class="item ${S.sel && S.sel.kind === 'light' && S.sel.id === l.id ? 'on' : ''}" data-act="sel" data-k="light" data-id="${l.id}"><span class="dot" style="background:${l.color}"></span><div class="nm"><b>#${l.n} ${esc(lb.name)}</b><small>${lb.type} · ${ROLES[l.role]} · z ${r2(l.z)} m</small></div>${fl ? [...fl].map(k => `<span class="chip ${k === 'glare' || k === 'burn' ? 'bad' : 'warn'}">${{ glare: 'oslnění', burn: 'přepal', low: 'úhel', off: 'mimo' }[k] || k}</span>`).join('') : ''}</div>`;
+  }
+  return h;
+}
+function panelObjects() {
+  const b = (k, t) => `<button class="btn" data-act="addObj" data-k="${k}">${t}</button>`;
+  let h = `<h3>Přidat na pódium</h3><div class="row">${b('speaker', '🔊 Reproduktor (kostka)')}${b('cube', '🧊 Kostka')}${b('cyl', '🛢️ Válec')}${b('person', '🧍 Hudebník (válec)')}${b('riser', '▭ Riser')}</div><h3>Objekty</h3>`;
+  for (const o of S.objects) h += `<div class="item ${S.sel && S.sel.kind === 'object' && S.sel.id === o.id ? 'on' : ''}" data-act="sel" data-k="object" data-id="${o.id}"><span class="dot" style="background:${o.color}"></span><div class="nm"><b>${esc(o.name)}</b><small>${o.kind === 'box' ? `${o.w}×${o.d}×${o.h} m` : `Ø ${r2(o.r * 2)} m × ${o.h} m`}</small></div></div>`;
+  return h || '<p class="mut">Žádné objekty.</p>';
+}
+const PANELS = { scene: panelScene, modes: panelModes, lib: panelLib, lights: panelLights, objects: panelObjects };
+function renderPanel() {
+  panelEl.innerHTML = PANELS[S.ui.tab]();
+  document.querySelectorAll('#ltabs .tab').forEach(t => t.classList.toggle('on', t.dataset.tab === S.ui.tab));
+}
+function renderChrome() {
+  document.querySelectorAll('#vtabs .tab').forEach(t => t.classList.toggle('on', t.dataset.view === S.ui.view));
+  $('#cam').style.display = S.ui.view === '3d' ? 'flex' : 'none'; $('#hint').textContent = HINTS[S.ui.view];
+  document.querySelectorAll('.bar [data-bind]').forEach(i => { const r = resolve(i.dataset.bind); if (r) i.checked = !!r.obj[r.key]; });
+}
+const SWATCH = ['#ffffff', '#ffd9a8', '#ffb347', '#ff5d6c', '#ff4fd8', '#9a6bff', '#4a6cff', '#55e0ff', '#4cd08a', '#d6ff4f'];
+function renderInspector() {
+  const e = selEnt();
+  if (!e) { inspEl.innerHTML = '<h3>Inspektor</h3><p class="mut">Klikněte na světlo nebo objekt v plátně / seznamu.</p>'; return; }
+  const R = S.room;
+  if (S.sel.kind === 'light') {
+    const lb = libOf(e);
+    inspEl.innerHTML = `<h3>Světlo #${e.n}</h3><b>${esc(lb.name)}</b> <span class="chip">${lb.type}</span> <span class="chip">${lb.watt} W</span>
+      <div class="f n" style="margin-top:8px"><span>Role</span>${sel('@role', ROLES)}</div>
+      <h3>Pozice</h3>${fld('X (m)', '@x', -3, R.w + 3, 0.1)}${fld('Y (m)', '@y', -3, R.d + 3, 0.1)}${fld('Z výška (m)', '@z', 0, R.h, 0.1)}
+      <div class="row"><button class="btn sm" data-act="snap">Přichytit na truss</button></div>
+      <h3>Směr (kam svítí)</h3>${fld('Pan (°)', '@pan', -180, 180, 1)}${fld('Tilt (°)', '@tilt', 0, 150, 1)}
+      <div class="f n"><span>Zaměřit na</span><div class="row" style="margin:0"><input type="number" id="ax" class="qty" step="0.1" title="X"><input type="number" id="ay" class="qty" step="0.1" title="Y"><input type="number" id="az" class="qty" step="0.1" value="0" title="Z"><button class="btn sm" data-act="aim">OK</button></div></div>
+      <div class="row"><button class="btn sm" data-act="aimC">Na střed pódia (hruď)</button><button class="btn sm" data-act="aimDown">Svisle dolů</button></div>
+      <h3>Světlo</h3>${fld('Úhel kuželu (°)', '@angle', lb.min, lb.max, 0.5)}${fld('Intenzita (%)', '@intensity', 0, 100, 1)}
+      <div class="f n"><span>Barva (RGB)</span><input type="color" data-bind="@color"></div><div class="sw">${SWATCH.map(c => `<i style="background:${c}" data-act="color" data-c="${c}"></i>`).join('')}</div>
+      <p class="mut" id="lstat"></p>
+      <div class="row"><button class="btn" data-act="dup">Duplikovat</button><button class="btn danger" data-act="del">Smazat</button></div>`;
+    inspEl.querySelector('input[type=color]').value = e.color;
+  } else {
+    inspEl.innerHTML = `<h3>Objekt</h3><div class="f n"><span>Název</span><input type="text" data-bind="@name"></div>
+      ${fld('X (m)', '@x', 0, R.w, 0.05)}${fld('Y (m)', '@y', 0, R.d, 0.05)}${fld('Zvednutí (m)', '@lift', 0, 3, 0.05)}
+      ${e.kind === 'box' ? fld('Šířka (m)', '@w', 0.1, 6, 0.05) + fld('Hloubka (m)', '@d', 0.1, 6, 0.05) : fld('Poloměr (m)', '@r', 0.05, 2, 0.05)}${fld('Výška (m)', '@h', 0.1, 4, 0.05)}
+      <div class="f n"><span>Barva</span><input type="color" data-bind="@color"></div>
+      <div class="row"><button class="btn danger" data-act="del">Smazat</button></div>`;
+    inspEl.querySelector('input[type=color]').value = e.color;
+    inspEl.querySelector('[data-bind="@name"]').value = e.name;
+  }
+  syncInspector();
+}
+function syncInspector() {
+  const e = selEnt(); if (!e) return;
+  inspEl.querySelectorAll('[data-bind]').forEach(i => { if (i === document.activeElement || i.type === 'checkbox') return; const r = resolve(i.dataset.bind); if (r && r.key !== 'name') i.value = i.type === 'color' ? r.obj[r.key] : r2(r.obj[r.key]); });
+  const st = $('#lstat', inspEl), g = e && G.find(q => q.l.id === e.id);
+  if (st && g) {
+    const E = lightE(g, g.axis.p, NORMALS[g.axis.surf]), ft = g.rim.filter(r => r.surf === 'deck' || r.surf === 'floor');
+    const dia = ft.length > 3 ? Math.max(...ft.map(r => Math.hypot(r.p.x - g.axis.p.x, r.p.y - g.axis.p.y))) * 2 : 0;
+    st.textContent = `Vzdálenost k ose ${r2(g.axis.t)} m · E na ose ≈ ${Math.round(E)} lx · stopa Ø ≈ ${r2(dia)} m · dopad: ${{ deck: 'pódium', floor: 'podlaha', wallB: 'zadní stěna', wallL: 'levá stěna', wallR: 'pravá stěna', wallF: 'přední stěna', ceil: 'strop', none: 'nic' }[g.axis.surf]}`;
+  }
+}
+function renderAnalysis() {
+  const sc = A.score, col = v => v >= 70 ? 'var(--ok)' : v >= 40 ? 'var(--warn)' : 'var(--bad)';
+  const m = (l, v) => `<div class="meter"><span>${l}</span><div class="b"><i style="width:${v}%;background:${col(v)}"></i></div><b>${v}</b></div>`;
+  const s = A.stats || {};
+  anaEl.innerHTML = `<h3>Analýza</h3>${m('Hloubka', sc.depth)}${m('Kontrast', sc.contrast)}${m('Bezpečnost', sc.safety)}
+    <div class="stats"><span>Průměr na pódiu <b>${Math.round(s.avg || 0)} lx</b></span><span>Rovnoměrnost <b>${(s.uni || 0).toFixed(2)}</b></span><span>Pokrytí ≥150 lx <b>${Math.round((s.cov || 0) * 100)} %</b></span><span>Příkon <b>${((s.watt || 0) / 1000).toFixed(1)} kW</b></span><span>Světel <b>${s.count || 0}</b></span><span>Max <b>${Math.round(s.max || 0)} lx</b></span></div>
+    <h3>Doporučení a varování</h3><ul class="msgs">${A.msgs.map(x => `<li class="${x.sev}" ${x.id ? `data-id="${x.id}"` : ''}>${{ bad: '⛔', warn: '⚠️', info: 'ℹ️', ok: '✅' }[x.sev]} ${esc(x.text)}</li>`).join('')}</ul>`;
+}
+let anaT = 0;
+function analyzeSoon() {
+  clearTimeout(anaT);
+  anaT = setTimeout(() => { analyze(); renderAnalysis(); if (S.ui.tab === 'lights' && !drag) renderPanel(); syncInspector(); requestRender(); }, 90);
+}
+let saveT = 0;
+function saveSoon() { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* úložiště nedostupné */ } }, 400); }
+function touch() { rev++; saveSoon(); analyzeSoon(); requestRender(); }
+function select(kind, id) {
+  const same = (!kind && !S.sel) || (S.sel && S.sel.kind === kind && S.sel.id === id);
+  S.sel = kind ? { kind, id } : null;
+  if (!same) { renderInspector(); if (S.ui.tab === 'lights' || S.ui.tab === 'objects') renderPanel(); }
+  requestRender();
+}
+function fullRender() { renderChrome(); renderPanel(); renderInspector(); analyze(); renderAnalysis(); requestRender(); }
+
+/* ---- vazby polí ---- */
+function onBind(e) {
+  const t = e.target, b = t.dataset && t.dataset.bind; if (!b) return;
+  let v;
+  if (t.type === 'checkbox') v = t.checked;
+  else if (t.type === 'number' || t.type === 'range') {
+    v = parseFloat(t.value); if (isNaN(v)) return;
+    const lo = t.min !== '' ? +t.min : -Infinity, hi = t.max !== '' ? +t.max : Infinity;
+    if (e.type === 'change') { v = clamp(v, lo, hi); t.value = v; } else if (v < lo || v > hi) return;
+  } else v = t.value;
+  const r = resolve(b); if (!r) return;
+  r.obj[r.key] = v;
+  document.querySelectorAll(`[data-bind="${b}"]`).forEach(o => { if (o !== t && o.type !== 'checkbox') o.value = v; else if (o !== t) o.checked = v; });
+  if (b === 'haze.on' || b.startsWith('ui.')) { renderChrome(); }
+  touch();
+  if (b === '@name' || b === '@color') { if (S.ui.tab === 'lights' || S.ui.tab === 'objects') renderPanel(); }
+}
+for (const el of [panelEl, inspEl, document.querySelector('#stageview .bar')]) { el.addEventListener('input', onBind); el.addEventListener('change', onBind); }
+panelEl.addEventListener('input', e => { if (e.target.id === 'libq') { panelLib.q = e.target.value; const pos = e.target.selectionStart; renderPanel(); const i = $('#libq'); i.focus(); i.setSelectionRange(pos, pos); } });
+panelEl.addEventListener('change', e => { if (e.target.id === 'libt') { panelLib.t = e.target.value; renderPanel(); } });
+
+/* ---- akce (kliknutí) ---- */
+function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+function loadState(o) {
+  const d = defaultState(); S = Object.assign(d, o); S.ui = Object.assign(d.ui, o.ui || {}); S.haze = Object.assign(d.haze, o.haze || {});
+  rev++; camPreset('persp'); fullRender();
+}
+const ACTS = {
+  exportJson() { download('plan-osvetleni.json', new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' })); },
+  importJson() { $('#fileJson').click(); },
+  png() { cv.toBlob(b => download('plan-osvetleni.png', b)); },
+  reset() { if (confirm('Opravdu smazat plán a vrátit výchozí scénu?')) { S = defaultState(); applyPreset('three', true); rev++; camPreset('persp'); fullRender(); saveSoon(); } },
+  cam(t) { camPreset(t.dataset.v); requestRender(); },
+  preset(t) { applyPreset(t.dataset.p); touch(); renderChrome(); renderPanel(); renderInspector(); },
+  addlib(t) {
+    const lb = libById(t.dataset.id), qty = clamp(parseInt(t.parentElement.querySelector('.qty').value) || 1, 1, 40), ty = trussY();
+    let last;
+    for (let i = 0; i < qty; i++) { const k = S.lights.length; last = addLight(lb, { x: S.stage.x + ((k % 9) - 4) * 0.9, y: ty.f, z: S.truss.h }); }
+    select('light', last.id); touch(); renderPanel();
+  },
+  addCustom() {
+    const v = id => $('#' + id).value, name = v('cn').trim(); if (!name) return;
+    const mn = +v('cmin') || 10, mx = Math.max(mn, +v('cmax') || 45), ang = clamp(+v('cang') || 25, mn, mx);
+    S.customLib.push({ id: 'c' + S.nextId++, name, type: v('ct'), watt: +v('cw') || 100, angle: ang, min: mn, max: mx, stock: +v('cs') || 1, tech: v('cte') });
+    touch(); renderPanel();
+  },
+  importLib() {
+    try {
+      const arr = JSON.parse($('#libjson').value); if (!Array.isArray(arr)) throw 0;
+      for (const o of arr) {
+        if (!o.name) continue; const mn = +o.min || +o.angle || 25, mx = Math.max(mn, +o.max || +o.angle || 25);
+        S.customLib.push({ id: 'c' + S.nextId++, name: String(o.name), type: TYPES.includes(o.type) ? o.type : 'Spot', watt: +o.watt || 100, angle: clamp(+o.angle || mn, mn, mx), min: mn, max: mx, stock: +(o.stock ?? o.qty ?? o.count) || 1, tech: EFF[o.tech] ? o.tech : 'led', lm: +o.lm || undefined });
+      }
+      touch(); renderPanel();
+    } catch (e) { alert('Neplatný JSON knihovny.'); }
+  },
+  sel(t) { select(t.dataset.k, +t.dataset.id); },
+  delAll() { if (confirm('Smazat všechna světla?')) { S.lights = []; S.sel = null; touch(); renderPanel(); renderInspector(); } },
+  del() {
+    const e = selEnt(); if (!e) return;
+    if (S.sel.kind === 'light') S.lights = S.lights.filter(l => l !== e); else S.objects = S.objects.filter(o => o !== e);
+    S.sel = null; touch(); renderPanel(); renderInspector();
+  },
+  dup() {
+    const e = selEnt(); if (!e || S.sel.kind !== 'light') return;
+    const c = Object.assign({}, e, { id: S.nextId++, n: S.nextN++, x: r2(e.x + 0.5) }); S.lights.push(c); select('light', c.id); touch(); renderPanel();
+  },
+  snap() { const e = selEnt(), ty = trussY(); if (!e) return; e.z = S.truss.h; e.y = Math.abs(e.y - ty.f) < Math.abs(e.y - ty.b) ? ty.f : ty.b; touch(); syncInspector(); },
+  aim() { const e = selEnt(); if (!e) return; const v = id => parseFloat($('#' + id).value); if ([v('ax'), v('ay'), v('az')].some(isNaN)) return; aimAt(e, pt(v('ax'), v('ay'), v('az'))); touch(); syncInspector(); },
+  aimC() { const e = selEnt(); if (e) { aimAt(e, chestPoint()); touch(); syncInspector(); } },
+  aimDown() { const e = selEnt(); if (e) { e.tilt = 0; touch(); syncInspector(); } },
+  color(t) { const e = selEnt(); if (e) { e.color = t.dataset.c; touch(); syncInspector(); if (S.ui.tab === 'lights') renderPanel(); } },
+  addOpening(t) { S.openings.push(t.dataset.t === 'door' ? { type: 'door', wall: 'front', pos: 6, w: 1.2, h: 2.1, sill: 0 } : { type: 'window', wall: 'right', pos: 8, w: 2, h: 1.4, sill: 1.2 }); touch(); renderPanel(); },
+  delOpening(t) { S.openings.splice(+t.dataset.i, 1); touch(); renderPanel(); },
+  addObj(t) {
+    const k = t.dataset.k, id = S.nextId++, st = S.stage, base = { id, x: st.x, y: st.y + st.d / 2, lift: 0 };
+    const defs = {
+      speaker: { kind: 'box', name: 'Reproduktor', w: 0.7, d: 0.6, h: 1.2, color: '#3a4560' }, cube: { kind: 'box', name: 'Kostka', w: 0.8, d: 0.8, h: 0.8, color: '#8a6bd6' },
+      cyl: { kind: 'cyl', name: 'Válec', r: 0.4, h: 1, color: '#4a9d8a' }, person: { kind: 'cyl', name: 'Hudebník', r: 0.22, h: 1.7, color: '#d6a24a', head: true },
+      riser: { kind: 'box', name: 'Riser', w: 2, d: 2, h: 0.4, color: '#2f394f' },
+    };
+    S.objects.push(Object.assign(base, defs[k])); select('object', id); touch(); renderPanel();
+  },
+};
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (t && ACTS[t.dataset.act]) { ACTS[t.dataset.act](t); return; }
+  const tab = e.target.closest('[data-tab]'); if (tab) { S.ui.tab = tab.dataset.tab; renderPanel(); saveSoon(); return; }
+  const vw = e.target.closest('[data-view]'); if (vw) { S.ui.view = vw.dataset.view; renderChrome(); requestRender(); saveSoon(); return; }
+  const li = e.target.closest('li[data-id]'); if (li) { select('light', +li.dataset.id); }
+});
+$('#fileJson').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(t => { try { loadState(JSON.parse(t)); } catch (err) { alert('Soubor nelze načíst.'); } }).finally(() => { e.target.value = ''; });
+});
+document.addEventListener('keydown', e => {
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') { if (S.sel) { e.preventDefault(); ACTS.del(); } }
+  if (e.key === 'Escape') select(null);
+});
+
+/* =====================================================================
+   13. Start
+   ===================================================================== */
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) { /* bez uložení */ }
+  if (saved && saved.room && saved.stage) { const d = defaultState(); S = Object.assign(d, saved); S.ui = Object.assign(d.ui, saved.ui || {}); S.haze = Object.assign(d.haze, saved.haze || {}); }
+  else applyPreset('three', true);
+  camPreset('persp'); resize(); fullRender();
+  window.__planner = { get S() { return S; }, get A() { return A; }, applyPreset, analyze, touch, camPreset, fullRender };
+})();
+</script>
+</body>
+</html>

@@ -2,11 +2,14 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
 <title>Plánovač pódiového osvětlení</title>
 <style>
 :root{--bg:#0b0e14;--panel:#121722;--panel2:#181f2e;--line:#262f43;--txt:#e6eaf2;--mut:#8b95ab;--acc:#ffb347;--ok:#4cd08a;--warn:#ffcc4d;--bad:#ff5d6c;--info:#6ab6ff}
 *{box-sizing:border-box}
+html{color-scheme:dark}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:13px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 button,input,select,textarea{font:inherit;color:inherit}
 header{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -30,7 +33,7 @@ aside{background:var(--panel);overflow:auto;min-height:0}
 .tog input{accent-color:var(--acc)}
 .spacer{flex:1}
 .cvwrap{position:relative;flex:1;min-height:320px}
-#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#cv{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
 #cam{position:absolute;left:10px;top:10px;display:none;gap:5px}
 .hint{padding:5px 12px;color:var(--mut);font-size:12px;border-top:1px solid var(--line);background:var(--panel)}
 .pad{padding:10px 12px}
@@ -40,7 +43,7 @@ h3:first-child{margin-top:0}
 .f.n{grid-template-columns:92px 1fr}
 .f span{color:var(--mut)}
 .f input[type=range]{width:100%;accent-color:var(--acc)}
-input[type=number],input[type=text],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;width:100%}
+input[type=number],input[type=text],select,textarea{color:var(--txt);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;width:100%}
 input[type=color]{width:100%;height:26px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:1px}
 .sw{display:flex;gap:4px;margin:4px 0 2px 98px;flex-wrap:wrap}
 .sw i{width:18px;height:18px;border-radius:50%;border:1px solid #fff3;cursor:pointer}
@@ -68,21 +71,33 @@ ul.msgs li{padding:6px 8px;border-left:3px solid var(--info);background:var(--pa
 ul.msgs li.bad{border-color:var(--bad)}ul.msgs li.warn{border-color:var(--warn)}ul.msgs li.ok{border-color:var(--ok)}
 ul.msgs li[data-id]{cursor:pointer}
 details{margin:8px 0}summary{cursor:pointer;color:var(--mut)}
-@media(max-width:1150px){
- main{grid-template-columns:1fr;height:auto}
- #stageview{order:-1;height:75vh}
- aside{max-height:none}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--panel2);border:1px solid var(--acc);border-radius:9px;padding:8px 14px;z-index:50;max-width:90vw}
+/* telefon: plátno zůstává nahoře (sticky), pod ním inspektor, panely a analýza */
+@media(max-width:900px){
+ html,body{height:auto}
+ header{padding:6px 12px}
+ header h1 span{display:none}
+ main{display:flex;flex-direction:column;height:auto}
+ aside{overflow:visible}
+ #right{display:contents}
+ #stageview{order:0;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;height:56dvh;background:var(--bg);border-bottom:1px solid var(--line)}
+ #inspector{order:1;background:var(--panel);border-bottom:1px solid var(--line)}
+ #left{order:2;border:0}
+ #analysis{order:3;background:var(--panel)}
+ .cvwrap{min-height:0}
+ .bar{padding:3px 8px;gap:2px 8px}
+ .tab{padding:7px 9px;font-size:12px}
+ .tog{font-size:12px}
+ .btn{padding:7px 12px}.btn.sm{padding:6px 10px}
+ input,select,textarea{font-size:16px!important}
+ .f{grid-template-columns:80px 1fr 76px}
+ .hint{font-size:11px;padding:3px 10px}
 }
 </style>
 </head>
 <body>
 <header>
   <h1>🎛️ Plánovač pódiového osvětlení <span>· 2D · boční pohled · 3D</span></h1>
-  <button class="btn" data-act="exportJson">Uložit plán</button>
-  <button class="btn" data-act="importJson">Načíst plán</button>
-  <button class="btn" data-act="png">PNG</button>
-  <button class="btn danger" data-act="reset">Reset</button>
-  <input type="file" id="fileJson" accept="application/json,.json" hidden>
 </header>
 <main>
   <aside id="left">
@@ -111,6 +126,7 @@ details{margin:8px 0}summary{cursor:pointer;color:var(--mut)}
     </div>
     <div class="cvwrap">
       <canvas id="cv"></canvas>
+      <button class="btn sm" id="zoomReset" hidden style="position:absolute;right:10px;bottom:10px">⤢ Původní pohled</button>
       <div id="cam" class="row">
         <button class="btn sm" data-act="cam" data-v="front">Zepředu</button>
         <button class="btn sm" data-act="cam" data-v="side">Z boku</button>
@@ -125,6 +141,7 @@ details{margin:8px 0}summary{cursor:pointer;color:var(--mut)}
     <div class="pad" id="analysis" style="border-top:1px solid var(--line)"></div>
   </aside>
 </main>
+<div id="toast" hidden></div>
 
 <script>
 'use strict';
@@ -575,9 +592,13 @@ const sn = (v, step) => S.ui.snap ? Math.round(v / step) * step : r2(v);
 /* =====================================================================
    8. Pohled shora (2D)
    ===================================================================== */
+// přiblížení a posun 2D pohledů (dva prsty / tažení prázdné plochy)
+const ZM = { z: 1, px: 0, py: 0 };
+const HIT = matchMedia('(pointer:coarse)').matches ? 24 : 13;
+const zoomed = (s, ox, oy) => ({ s: s * ZM.z, ox: W / 2 + (ox - W / 2) * ZM.z + ZM.px, oy: H / 2 + (oy - H / 2) * ZM.z + ZM.py });
 const Top = {
   g: null,
-  geom() { const R = S.room, m = 1.3, s = Math.min((W - 24) / (R.w + 2 * m), (H - 30) / (R.d + 2 * m)); return { s, ox: (W - R.w * s) / 2, oy: (H - R.d * s) / 2 }; },
+  geom() { const R = S.room, m = 1.3, s = Math.min((W - 24) / (R.w + 2 * m), (H - 30) / (R.d + 2 * m)); return zoomed(s, (W - R.w * s) / 2, (H - R.d * s) / 2); },
   T(x, y) { return [this.g.ox + x * this.g.s, this.g.oy + y * this.g.s]; },
   W(px, py) { return pt((px - this.g.ox) / this.g.s, (py - this.g.oy) / this.g.s, 0); },
   draw() {
@@ -657,9 +678,9 @@ const Top = {
     const sel = selEnt();
     if (S.sel && S.sel.kind === 'light' && sel) {
       const gg = G.find(q => q.l.id === sel.id);
-      if (gg) { const [ax, ay] = this.T(gg.axis.p.x, gg.axis.p.y); if (Math.hypot(ax - px, ay - py) < 11) return { t: 'aim', l: sel, z: gg.axis.p.z }; }
+      if (gg) { const [ax, ay] = this.T(gg.axis.p.x, gg.axis.p.y); if (Math.hypot(ax - px, ay - py) < HIT) return { t: 'aim', l: sel, z: gg.axis.p.z }; }
     }
-    let best = null, bd = 13;
+    let best = null, bd = HIT;
     for (const gg of G) { const [x, y] = this.T(gg.o.x, gg.o.y), d = Math.hypot(x - px, y - py); if (d < bd) { bd = d; best = gg.l; } }
     if (best) { select('light', best.id); return { t: 'light', e: best }; }
     const w = this.W(px, py);
@@ -667,7 +688,7 @@ const Top = {
       const o = S.objects[i], hit = o.kind === 'box' ? Math.abs(w.x - o.x) <= o.w / 2 && Math.abs(w.y - o.y) <= o.d / 2 : Math.hypot(w.x - o.x, w.y - o.y) <= Math.max(o.r, 0.25);
       if (hit) { select('object', o.id); return { t: 'obj', e: o, dx: o.x - w.x, dy: o.y - w.y }; }
     }
-    select(null); return null;
+    return { t: 'pan', sx: px, sy: py, px0: ZM.px, py0: ZM.py, moved: false };
   },
   move(d, px, py) {
     const w = this.W(px, py);
@@ -687,7 +708,8 @@ function makeElev(ax) {
     geom() {
       const R = S.room, e = ax === 'x' ? R.w : R.d, L = 56, Rr = 24, T = 26, B = 46;
       const s = Math.min((W - L - Rr) / e, (H - T - B) / R.h);
-      return { s, ox: L + ((W - L - Rr) - e * s) / 2, by: T + ((H - T - B) - R.h * s) / 2 + R.h * s, e };
+      const z = zoomed(s, L + ((W - L - Rr) - e * s) / 2, T + ((H - T - B) - R.h * s) / 2 + R.h * s);
+      return { s: z.s, ox: z.ox, by: z.oy, e };
     },
     S(h, z) { return [this.g.ox + h * this.g.s, this.g.by - z * this.g.s]; },
     inv(px, py) { return { h: (px - this.g.ox) / this.g.s, z: (this.g.by - py) / this.g.s }; },
@@ -770,7 +792,7 @@ function makeElev(ax) {
       ctx.strokeStyle = '#5b6783'; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rx2 - rx, ry2 - ry);
     },
     down(px, py) {
-      let best = null, bd = 14;
+      let best = null, bd = HIT + 1;
       for (const gg of G) { const [x, y] = this.S(hc(gg.o), gg.o.z), d = Math.hypot(x - px, y - py); if (d < bd) { bd = d; best = gg.l; } }
       if (best) { select('light', best.id); return { t: 'light', e: best }; }
       const w = this.inv(px, py);
@@ -778,7 +800,7 @@ function makeElev(ax) {
         const o = S.objects[i], hw = o.kind === 'box' ? (ax === 'x' ? o.w : o.d) / 2 : Math.max(o.r, 0.2), b = objBase(o);
         if (Math.abs(w.h - hc(o)) <= hw && w.z >= b && w.z <= b + o.h) { select('object', o.id); return { t: 'obj', e: o, off: hc(o) - w.h }; }
       }
-      select(null); return null;
+      return { t: 'pan', sx: px, sy: py, px0: ZM.px, py0: ZM.py, moved: false };
     },
     move(d, px, py) {
       const w = this.inv(px, py);
@@ -942,7 +964,7 @@ const View3D = {
   },
   up(px, py) {
     if (this.moved) return;
-    let best = null, bd = 18;
+    let best = null, bd = HIT + 4;
     for (const g of G) { const p = P3(g.o); if (p) { const d = Math.hypot(p[0] - px, p[1] - py); if (d < bd) { bd = d; best = g.l; } } }
     select(best ? 'light' : null, best && best.id);
   },
@@ -950,10 +972,10 @@ const View3D = {
 
 const VIEWS = { top: Top, front: makeElev('x'), side: makeElev('y'), '3d': View3D };
 const HINTS = {
-  top: 'Přetáhněte světlo myší (lze i mimo pódium). Kosočtverec = zaměřovač (kam svítí). Kliknutím vyberete světlo/objekt, Delete ho smaže.',
-  front: 'Čelní pohled: přetahováním měníte pozici X a výšku Z světla. Čárkované červené = zóna očí publika.',
-  side: 'Boční pohled: přetahováním měníte pozici Y a výšku Z. Publikum je vpravo, oči diváků jsou červená čára.',
-  '3d': 'Tažením myší otáčíte kameru, kolečkem zoomujete, kliknutím na světlo ho vyberete. Haze zobrazí volumetrické kužely.',
+  top: 'Táhněte světlo (i mimo pódium), kosočtverec = zaměřovač. Dva prsty = zoom, tažení prázdné plochy = posun.',
+  front: 'Čelní pohled: tažením měníte X a výšku Z světla. Dva prsty = zoom.',
+  side: 'Boční pohled: tažením měníte Y a výšku Z. Publikum vpravo, červená čára = oči diváků.',
+  '3d': 'Tažení = otáčení kamery, dva prsty = zoom, klepnutí na světlo = výběr.',
 };
 
 /* =====================================================================
@@ -967,19 +989,56 @@ function render() {
   VIEWS[S.ui.view].draw();
 }
 let drag = null;
+const ptrs = new Map();
+let pinch = null;
 const lp = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+const syncZoomBtn = () => { $('#zoomReset').hidden = !(S.ui.view !== '3d' && (ZM.z !== 1 || ZM.px || ZM.py)); };
 cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId); ensureGeom();
-  const [x, y] = lp(e); drag = VIEWS[S.ui.view].down(x, y, e);
+  const pt0 = lp(e); ptrs.set(e.pointerId, pt0);
+  if (ptrs.size === 2) {                       // štípnutí: zoom (a posun u 2D)
+    drag = null;
+    const [a, b] = [...ptrs.values()];
+    pinch = { d0: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, z0: ZM.z, dist0: Cam.dist, mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2, px0: ZM.px, py0: ZM.py };
+    return;
+  }
+  if (ptrs.size > 2) return;
+  drag = VIEWS[S.ui.view].down(pt0[0], pt0[1], e);
 });
 cv.addEventListener('pointermove', e => {
-  if (!drag) return; const [x, y] = lp(e);
+  if (!ptrs.has(e.pointerId)) return;
+  const [x, y] = lp(e); ptrs.set(e.pointerId, [x, y]);
+  if (pinch && ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]) || 1;
+    if (S.ui.view === '3d') Cam.dist = clamp(pinch.dist0 * pinch.d0 / d, 6, 90);
+    else {
+      const z = clamp(pinch.z0 * d / pinch.d0, 1, 6), k = z / pinch.z0, mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      ZM.z = z; ZM.px = (mx - W / 2) - (pinch.mx - W / 2 - pinch.px0) * k; ZM.py = (my - H / 2) - (pinch.my - H / 2 - pinch.py0) * k;
+      if (z === 1) { ZM.px = 0; ZM.py = 0; }
+    }
+    syncZoomBtn(); requestRender(); return;
+  }
+  if (!drag) return;
+  if (drag.t === 'pan') {
+    if (Math.hypot(x - drag.sx, y - drag.sy) > 6) drag.moved = true;
+    if (drag.moved) { ZM.px = drag.px0 + (x - drag.sx); ZM.py = drag.py0 + (y - drag.sy); syncZoomBtn(); requestRender(); }
+    return;
+  }
   VIEWS[S.ui.view].move(drag, x, y);
   if (drag.t === 'cam') requestRender(); else { touch(); syncInspector(); }
 });
-const endDrag = e => { if (!drag) return; const v = VIEWS[S.ui.view]; if (v.up) { const [x, y] = lp(e); v.up(x, y); } drag = null; };
-cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', () => { drag = null; });
-cv.addEventListener('wheel', e => { if (S.ui.view !== '3d') return; e.preventDefault(); Cam.dist = clamp(Cam.dist * (1 + e.deltaY * 0.001), 6, 90); requestRender(); }, { passive: false });
+const endDrag = e => {
+  ptrs.delete(e.pointerId);
+  if (pinch) { if (ptrs.size < 2) pinch = null; drag = null; return; }
+  if (!drag) return;
+  const v = VIEWS[S.ui.view];
+  if (drag.t === 'pan') { if (!drag.moved) select(null); }
+  else if (v.up) { const [x, y] = lp(e); v.up(x, y); }
+  drag = null;
+};
+cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('wheel', e => { e.preventDefault(); if (S.ui.view === '3d') Cam.dist = clamp(Cam.dist * (1 + e.deltaY * 0.001), 6, 90); else { ZM.z = clamp(ZM.z * (1 - e.deltaY * 0.001), 1, 6); if (ZM.z === 1) { ZM.px = 0; ZM.py = 0; } syncZoomBtn(); } requestRender(); }, { passive: false });
+$('#zoomReset').addEventListener('click', () => { ZM.z = 1; ZM.px = 0; ZM.py = 0; syncZoomBtn(); requestRender(); });
 new ResizeObserver(() => { resize(); requestRender(); }).observe(cv);
 
 /* =====================================================================
@@ -1013,7 +1072,10 @@ function panelScene() {
     <div style="width:100%">${sel(`openings.${i}.wall`, { back: 'Zadní stěna', front: 'Přední stěna', left: 'Levá stěna', right: 'Pravá stěna' })}</div>
     <div style="width:100%">${fld('Pozice (m)', `openings.${i}.pos`, 0, 60, 0.1, { noSlider: 1 })}${fld('Šířka (m)', `openings.${i}.w`, 0.4, 10, 0.1, { noSlider: 1 })}${fld('Výška (m)', `openings.${i}.h`, 0.4, 6, 0.1, { noSlider: 1 })}${fld('Parapet (m)', `openings.${i}.sill`, 0, 4, 0.1, { noSlider: 1 })}</div></div>`;
   });
-  return h + `<div class="row"><button class="btn" data-act="addOpening" data-t="door">+ Dveře</button><button class="btn" data-act="addOpening" data-t="window">+ Okno</button></div>`;
+  return h + `<div class="row"><button class="btn" data-act="addOpening" data-t="door">+ Dveře</button><button class="btn" data-act="addOpening" data-t="window">+ Okno</button></div>
+  <h3>Plán</h3><p class="mut">Plán se ukládá automaticky v tomto prohlížeči. Pro zálohu nebo přenos ho zkopírujte jako text.</p>
+  <textarea id="plantxt" rows="3" placeholder="JSON plánu"></textarea>
+  <div class="row"><button class="btn" data-act="exportJson">Zkopírovat plán</button><button class="btn" data-act="importText">Načíst z textu</button><button class="btn danger" data-act="reset" data-confirm="1">Reset</button></div>`;
 }
 function panelModes() {
   const m = (k, t, d) => `<button class="btn mode" data-act="preset" data-p="${k}"><b>${t}</b><small>${d}</small></button>`;
@@ -1051,7 +1113,7 @@ function panelLib() {
 }
 function panelLights() {
   if (!S.lights.length) return '<p class="mut">Žádná světla. Přidejte je z Knihovny nebo použijte záložku Režimy.</p>';
-  let h = `<div class="row"><b>${S.lights.length} světel</b><span class="spacer"></span><button class="btn sm danger" data-act="delAll">Smazat všechna</button></div>`;
+  let h = `<div class="row"><b>${S.lights.length} světel</b><span class="spacer"></span><button class="btn sm danger" data-act="delAll" data-confirm="1">Smazat všechna</button></div>`;
   for (const l of S.lights) {
     const fl = A.flags.get(l.id), lb = libOf(l);
     h += `<div class="item ${S.sel && S.sel.kind === 'light' && S.sel.id === l.id ? 'on' : ''}" data-act="sel" data-k="light" data-id="${l.id}"><span class="dot" style="background:${l.color}"></span><div class="nm"><b>#${l.n} ${esc(lb.name)}</b><small>${lb.type} · ${ROLES[l.role]} · z ${r2(l.z)} m</small></div>${fl ? [...fl].map(k => `<span class="chip ${k === 'glare' || k === 'burn' ? 'bad' : 'warn'}">${{ glare: 'oslnění', burn: 'přepal', low: 'úhel', off: 'mimo' }[k] || k}</span>`).join('') : ''}</div>`;
@@ -1106,7 +1168,7 @@ function renderInspector() {
 }
 function syncInspector() {
   const e = selEnt(); if (!e) return;
-  inspEl.querySelectorAll('[data-bind]').forEach(i => { if (i === document.activeElement || i.type === 'checkbox') return; const r = resolve(i.dataset.bind); if (r && r.key !== 'name') i.value = i.type === 'color' ? r.obj[r.key] : r2(r.obj[r.key]); });
+  inspEl.querySelectorAll('[data-bind]').forEach(i => { if (i === document.activeElement || i.type === 'checkbox') return; const r = resolve(i.dataset.bind); if (r && r.key !== 'name') { const v = r.obj[r.key]; i.value = typeof v === 'number' ? r2(v) : v; } });
   const st = $('#lstat', inspEl), g = e && G.find(q => q.l.id === e.id);
   if (st && g) {
     const E = lightE(g, g.axis.p, NORMALS[g.axis.surf]), ft = g.rim.filter(r => r.surf === 'deck' || r.surf === 'floor');
@@ -1160,16 +1222,18 @@ panelEl.addEventListener('input', e => { if (e.target.id === 'libq') { panelLib.
 panelEl.addEventListener('change', e => { if (e.target.id === 'libt') { panelLib.t = e.target.value; renderPanel(); } });
 
 /* ---- akce (kliknutí) ---- */
-function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 2600); }
 function loadState(o) {
   const d = defaultState(); S = Object.assign(d, o); S.ui = Object.assign(d.ui, o.ui || {}); S.haze = Object.assign(d.haze, o.haze || {});
   rev++; camPreset('persp'); fullRender();
 }
 const ACTS = {
-  exportJson() { download('plan-osvetleni.json', new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' })); },
-  importJson() { $('#fileJson').click(); },
-  png() { cv.toBlob(b => download('plan-osvetleni.png', b)); },
-  reset() { if (confirm('Opravdu smazat plán a vrátit výchozí scénu?')) { S = defaultState(); applyPreset('three', true); rev++; camPreset('persp'); fullRender(); saveSoon(); } },
+  exportJson() {
+    const ta = $('#plantxt'); ta.value = JSON.stringify(S); ta.focus(); ta.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.reject()).then(() => toast('Plán zkopírován'), () => toast('Text je označený – zkopírujte ho ručně'));
+  },
+  importText() { try { loadState(JSON.parse($('#plantxt').value)); toast('Plán načten'); } catch (e) { toast('Do pole vložte JSON plánu.'); } },
+  reset() { S = defaultState(); applyPreset('three', true); rev++; camPreset('persp'); fullRender(); saveSoon(); toast('Plán vrácen na výchozí'); },
   cam(t) { camPreset(t.dataset.v); requestRender(); },
   preset(t) { applyPreset(t.dataset.p); touch(); renderChrome(); renderPanel(); renderInspector(); },
   addlib(t) {
@@ -1192,10 +1256,10 @@ const ACTS = {
         S.customLib.push({ id: 'c' + S.nextId++, name: String(o.name), type: TYPES.includes(o.type) ? o.type : 'Spot', watt: +o.watt || 100, angle: clamp(+o.angle || mn, mn, mx), min: mn, max: mx, stock: +(o.stock ?? o.qty ?? o.count) || 1, tech: EFF[o.tech] ? o.tech : 'led', lm: +o.lm || undefined });
       }
       touch(); renderPanel();
-    } catch (e) { alert('Neplatný JSON knihovny.'); }
+    } catch (e) { toast('Neplatný JSON knihovny.'); }
   },
   sel(t) { select(t.dataset.k, +t.dataset.id); },
-  delAll() { if (confirm('Smazat všechna světla?')) { S.lights = []; S.sel = null; touch(); renderPanel(); renderInspector(); } },
+  delAll() { S.lights = []; S.sel = null; touch(); renderPanel(); renderInspector(); },
   del() {
     const e = selEnt(); if (!e) return;
     if (S.sel.kind === 'light') S.lights = S.lights.filter(l => l !== e); else S.objects = S.objects.filter(o => o !== e);
@@ -1223,14 +1287,15 @@ const ACTS = {
   },
 };
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-act]'); if (t && ACTS[t.dataset.act]) { ACTS[t.dataset.act](t); return; }
+  const t = e.target.closest('[data-act]');
+  if (t && t.dataset.confirm) {                   // dvoukrokové potvrzení (alert/confirm v prohlížeči nejsou k dispozici)
+    if (t.dataset.armed !== '1') { const old = t.textContent; t.dataset.armed = '1'; t.textContent = 'Opravdu? Klepněte znovu'; setTimeout(() => { if (t.isConnected) { t.dataset.armed = ''; t.textContent = old; } }, 3000); return; }
+    t.dataset.armed = '';
+  }
+  if (t && ACTS[t.dataset.act]) { ACTS[t.dataset.act](t); return; }
   const tab = e.target.closest('[data-tab]'); if (tab) { S.ui.tab = tab.dataset.tab; renderPanel(); saveSoon(); return; }
-  const vw = e.target.closest('[data-view]'); if (vw) { S.ui.view = vw.dataset.view; renderChrome(); requestRender(); saveSoon(); return; }
+  const vw = e.target.closest('[data-view]'); if (vw) { S.ui.view = vw.dataset.view; syncZoomBtn(); renderChrome(); requestRender(); saveSoon(); return; }
   const li = e.target.closest('li[data-id]'); if (li) { select('light', +li.dataset.id); }
-});
-$('#fileJson').addEventListener('change', e => {
-  const f = e.target.files[0]; if (!f) return;
-  f.text().then(t => { try { loadState(JSON.parse(t)); } catch (err) { alert('Soubor nelze načíst.'); } }).finally(() => { e.target.value = ''; });
 });
 document.addEventListener('keydown', e => {
   if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
